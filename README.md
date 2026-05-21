@@ -82,6 +82,36 @@ lacak-buzzer/
 
 ## Instalasi & Cara Menjalankan
 
+### Panduan Kolaborasi
+Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
+
+1. **Clone Repositori**
+   ```bash
+   git clone https://github.com/Yogs4R/lacak-buzzer.git
+   cd lacak-buzzer
+   ```
+
+2. **Inisialisasi BMAD**
+   ```bash
+   npx bmad-method init
+   ```
+
+3. **Alur Kerja Git (Pilih Salah Satu)**
+
+   **Opsi A: Simple Workflow (Pemula)**
+   Gunakan alur ini jika tidak ingin pusing dengan *branching*.
+   - Siapkan perubahan: `git add .`
+   - Simpan perubahan: `git commit -m "pesan singkat tentang fitur/perbaikan"`
+   - Ambil *update* teman: `git pull origin main`
+   - Unggah pekerjaan: `git push origin main`
+
+   **Opsi B: Advanced Workflow (Standar Industri)**
+   Gunakan alur ini jika sudah terbiasa dengan Git.
+   - Ambil *update* terbaru: `git pull origin main`
+   - Buat *branch* fitur: `git checkout -b nama-tugas`
+   - Simpan perubahan: `git add .` lalu `git commit -m "feat: nama tugas"`
+   - Unggah & gabungkan: `git push origin nama-tugas` lalu buat *Pull Request* di GitHub.
+
 ### Backend (API)
 ```bash
 cd backend
