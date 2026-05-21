@@ -1,0 +1,48 @@
+name: Auto Release
+
+on:
+  push:
+    tags:
+      - 'v*'
+
+jobs:
+  build-and-release:
+    name: Create GitHub Release
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      # Reading the changelog configuration and generating the changelog based on commit messages
+      - name: Build Changelog
+        id: build_changelog
+        uses: mikepenz/release-changelog-builder-action@v5
+        with:
+          configuration: ".github/changelog-config.json"
+          mode: "COMMIT" # Generate changelog based on commit messages
+          token: ${{ secrets.GITHUB_TOKEN }}
+
+      # Prepare a stable step output for downstream steps (avoids context access issues)
+      - name: Prepare Changelog Output
+        id: prep_changelog
+        env:
+          CHANGELOG: ${{ steps.build_changelog.outputs.changelog }}
+        run: |
+          {
+            echo 'changelog<<EOF'
+            printf '%s\n' "$CHANGELOG"
+            echo 'EOF'
+          } >> "$GITHUB_OUTPUT"
+
+      # Creating a GitHub release with the generated changelog as the release notes
+      - name: Create Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ steps.prep_changelog.outputs.changelog }}
+          draft: false
+          prerelease: false
