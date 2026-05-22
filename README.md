@@ -96,7 +96,7 @@ Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
    npx bmad-method init
    ```
 
-3. **Alur Kerja Git (Pilih Salah Satu)**
+3. **Alur Kerja Git (2 Opsi)**
 
    **Opsi A: Simple Workflow (Pemula)**
    Gunakan alur ini jika tidak ingin pusing dengan *branching*.
@@ -113,10 +113,33 @@ Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
    - Unggah & gabungkan: `git push origin nama-tugas` lalu buat *Pull Request* di GitHub.
 
 ### Backend (API)
-```bash
+
+**Langkah 1: Setup Awal (Cukup dilakukan sekali)**
+Buka PowerShell, lalu jalankan perintah berikut untuk membuat *virtual environment* menggunakan Python 3.12:
+```powershell
 cd backend
+py -3.12 -m venv venv
+```
+*(Jika perintah `py` tidak dikenali, Anda bisa menggunakan `python -m venv venv` asalkan versi Python Anda adalah 3.12).*
+
+**Langkah 2: Menjalankan Backend (Dilakukan setiap kali ingin menjalankan API)**
+Buka PowerShell, lalu jalankan perintah berikut secara berurutan:
+```powershell
+cd backend
+# Aktifkan virtual environment
+.\venv\Scripts\Activate.ps1
+
+# Install atau perbarui dependensi
 pip install -r requirements.txt
+
+# Jalankan server API
 uvicorn main:app --reload
+```
+
+**Keluar dari Virtual Environment**
+Jika sudah selesai dan ingin menonaktifkan *virtual environment*, ketik perintah berikut di terminal:
+```powershell
+deactivate
 ```
 
 ### Frontend (Website)
