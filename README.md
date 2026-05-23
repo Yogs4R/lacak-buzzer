@@ -1,13 +1,21 @@
 # Lacak Buzzer
 
-![License](https://img.shields.io/github/license/Yogs4R/lacak-buzzer)
-![Python](https://img.shields.io/badge/python-3.10+-blue.svg)
-![FastAPI](https://img.shields.io/badge/FastAPI-0.110.0-009688.svg)
-![React](https://img.shields.io/badge/React-18-blue.svg)
-![Vite](https://img.shields.io/badge/Vite-5-646CFF.svg)
+![License](https://img.shields.io/github/license/Yogs4R/lacak-buzzer?style=for-the-badge&color=e03a1e)
+![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
+![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
+![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
 
 ## Deskripsi Proyek
 **Lacak Buzzer** adalah sistem *Minimum Viable Product* (MVP) ringan yang menganalisis profil dan aktivitas akun X/Twitter untuk memberikan **Indikator Risiko Amplifikasi Terkoordinasi**. Sistem ini memperkirakan pola perilaku seperti repetisi, intensitas aktivitas, dan interaksi tanpa mengklaim akun tersebut palsu, berbayar, atau berafiliasi secara definitif.
+
+## Anggota Kelompok
+| Nama | Tugas (Backend/Frontend) |
+|---|---|
+| [Ridwan](https://github.com/Yogs4R) | Backend 1 |
+| [Dandy](https://github.com/dandy63609) | Backend 2 |
+| [Naufal](https://github.com/naufalid755) | Frontend 1 |
+| [Falen](https://github.com/luckywtrike-rgb) | Frontend 2 |
 
 ## Tech Stack
 - **Frontend**: React.js, Vite, Tailwind CSS
@@ -72,7 +80,12 @@ lacak-buzzer/
 │   │   └── test_scoring.py           # Unit test algoritma scoring & reducers
 │   ├── main.py                       # Entry point ASGI FastAPI (Uvicorn)
 │   └── requirements.txt              # Daftar pustaka Python backend
+├── docs/                             # Dokumen progres dan manajerial
+│   └── PROGRESS.md                   # Pelacakan status rilis MVP
 ├── AGENTS.md                         # Dokumen PRD / Panduan agen AI proyek
+├── BRAND_RESOURCES.md                # Panduan identitas visual & copywriting
+├── DESIGN.md                         # Spesifikasi teknis desain & UI komponen
+├── DESIGN_RESEARCH.md                # Logika riset desain (ATM Method)
 ├── README.md                         # Dokumentasi pusat repositori (berkas ini)
 ├── .env.example                      # Template variabel environment rahasia
 ├── .gitignore                        # Daftar file yang diabaikan Git
@@ -91,12 +104,7 @@ Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
    cd lacak-buzzer
    ```
 
-2. **Inisialisasi BMAD**
-   ```bash
-   npx bmad-method init
-   ```
-
-3. **Alur Kerja Git (2 Opsi)**
+2. **Alur Kerja Git (2 Opsi)**
 
    **Opsi A: Simple Workflow (Pemula)**
    Gunakan alur ini jika tidak ingin pusing dengan *branching*.
