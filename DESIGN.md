@@ -60,7 +60,19 @@ body { background: var(--canvas); color: var(--ink); font-family: var(--font-mai
 ```
 - Sticky top, `background: rgba(10,10,10,0.85)`, `backdrop-filter: blur(12px)`
 - `border-bottom: 1px solid #2a2a2a`, padding `16px 32px`
-- Logo: `<img src="logo.png" height="36" alt="Lacak Buzzer">`
+- Logo: `<img src="lacak-buzzer-logo.webp" alt="Lacak Buzzer" className="navbar-logo">` — do **not** use `height` or `width` HTML attributes
+- Logo CSS (add to `index.css`):
+  ```css
+  .navbar-logo {
+    height: 48px;
+    width: auto;
+    max-height: 48px;
+    max-width: 200px;
+    object-fit: contain;
+    display: block;
+  }
+  ```
+  > This ensures the logo is always 36px tall regardless of source file resolution or format (`.png`, `.webp`, `.svg`, etc). Never set logo size via HTML attributes — always use CSS.
 - Nav links: 14px/600, default color `#8a8a8a`
 - **Active page link**: color `#ffffff`
 - "Coba Gratis" button: `background: var(--gradient)`, white, padding `10px 20px`, radius `6px`
@@ -83,7 +95,7 @@ Two columns side by side (55% left / 45% right), `min-height: 90vh`, `padding: 0
    - **98.4%** / Akurasi Deteksi
    - **2.1s** / Waktu Analisis
    - **12M+** / Akun Dipindai
-   - Stat number: 28px/700 white. Stat label: 12px/600 `#8a8a8a` uppercase
+   - Stat number: 28px/700, `background: var(--gradient)`, `-webkit-background-clip: text`, `-webkit-text-fill-color: transparent` (gradient text, same as About page stat cards). Stat label: 12px/600 `#8a8a8a` uppercase
    - Separated by `border-right: 1px solid #2a2a2a`, padding 0 32px (first has no left padding)
 
 **Right column — Analysis Card:**
@@ -114,33 +126,75 @@ Inside the card (top to bottom):
 
 ## Page 2 — About (id="page-about")
 
-Full-page section, `padding: 80px 32px`, max-width 1200px centered.
+Full-page section, `padding-top: 100px` (accounts for sticky navbar height), `padding: 100px 32px 80px`, max-width 1200px, `margin: 0 auto`.
 
-**Structure (top to bottom):**
+> **Layout fix:** The page wrapper must have `padding-top` large enough to clear the sticky navbar (min 72px). Use `padding: 100px 32px 80px` to guarantee no content is hidden behind the navbar on any screen size.
 
-1. Eyebrow: `TENTANG KAMI` — 13px/600, `#8a8a8a`, letter-spacing 2px, uppercase
-2. Headline: `Platform Indikator Risiko Amplifikasi Terkoordinasi` — 40px/700, white, margin-top 16px
+---
+
+**Section 1 — Intro (top of page)**
+
+Layout: single column, centered text, max-width 720px, `margin: 0 auto`.
+
+1. Eyebrow: `TENTANG KAMI` — 13px/600, `#8a8a8a`, letter-spacing 2px, uppercase, `text-align: center`
+2. Headline: `Platform Indikator Risiko Amplifikasi Terkoordinasi` — 40px/700, white, margin-top 16px, `text-align: center`
 
    > **Safety note:** The headline uses the full approved product label from AGENTS.md. Do not shorten to "Platform Deteksi Buzzer" alone — that framing implies certainty. If a shorter variant is needed for layout, use: `Platform Analisis Pola Perilaku di X`.
 
-3. Two columns (60% left / 40% right), gap 48px, margin-top 48px:
+3. Subtext (margin-top 16px): 18px/400, `#8a8a8a`, `text-align: center`  
+   `Alat bantu berbasis AI untuk jurnalis, peneliti, dan organisasi yang ingin memahami pola amplifikasi di platform X.`
 
-   **Left column:**
-   - Paragraph 1 (18px/400, `#c8c8c8`):  
-     `Lacak Buzzer menggunakan kecerdasan buatan untuk menganalisis pola perilaku akun di X. Kami membantu jurnalis, peneliti, dan organisasi memahami risiko amplifikasi terkoordinasi dengan akurasi tinggi.`
-   - Paragraph 2 (margin-top 24px, same style):  
-     `Sistem kami tidak menuduh. Kami hanya menyajikan indikator risiko berbasis pola perilaku — bukan bukti bahwa akun tersebut palsu, dibayar, atau memiliki niat tertentu.`
+---
 
-   **Right column — 3 stat cards (stacked vertically, gap 16px):**
-   - Each card: `background: #141414`, `border: 1px solid #2a2a2a`, radius 12px, padding 24px
-   - Card 1: `500K+` (28px/700 white) / `Analisis Selesai` (13px/600 `#8a8a8a` uppercase)
-   - Card 2: `99.1%` / `Uptime Platform`
-   - Card 3: `< 3s` / `Rata-rata Waktu Respons`
+**Section 2 — Two columns**, margin-top 64px, `display: grid`, `grid-template-columns: 3fr 2fr`, gap 48px, `align-items: start`.
 
-4. Safety note (margin-top 64px) — **mandatory, must always be visible**:
-   - Container: `background: #141414`, `border: 1px solid #2a2a2a`, `border-left: 4px solid #f97316`, radius 12px, padding 24px 32px
-   - Text (16px/400, `#c8c8c8`):  
-     `Catatan Penting: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.`
+> **Alignment fix:** Use CSS Grid, not flexbox, for this section. Set `align-items: start` so both columns start from the same top edge and do not stretch to fill height.
+
+**Left column:**
+- Paragraph 1 (18px/400, `#c8c8c8`, line-height 1.7):  
+  `Lacak Buzzer menggunakan kecerdasan buatan untuk menganalisis pola perilaku akun di X. Kami membantu jurnalis, peneliti, dan organisasi memahami risiko amplifikasi terkoordinasi dengan akurasi tinggi.`
+- Paragraph 2 (margin-top 24px, same style):  
+  `Sistem kami tidak menuduh. Kami hanya menyajikan indikator risiko berbasis pola perilaku — bukan bukti bahwa akun tersebut palsu, dibayar, atau memiliki niat tertentu.`
+- **Cara Kerja** row (margin-top 40px): 3 steps inline, `display: flex`, gap 24px:
+  - Each step: step number (`01`, `02`, `03`) in 13px/600 gradient color + label below (13px/600, `#8a8a8a`, uppercase)
+  - Step 1: `01` / `KUMPULKAN DATA PUBLIK`
+  - Step 2: `02` / `EKSTRAKSI POLA PERILAKU`
+  - Step 3: `03` / `HITUNG INDIKATOR RISIKO`
+  - Separated by thin arrow `→` between steps, color `#2a2a2a`
+
+**Right column — 3 stat cards (stacked vertically, gap 16px):**
+- Each card: `background: #141414`, `border: 1px solid #2a2a2a`, radius 12px, padding 24px, `width: 100%`
+- Stat number: 28px/700, `background: var(--gradient)`, `-webkit-background-clip: text`, `-webkit-text-fill-color: transparent` (gradient text)
+- Stat label: 13px/600, `#8a8a8a`, uppercase, margin-top 4px
+- Card 1: `500K+` / `Analisis Selesai`
+- Card 2: `99.1%` / `Uptime Platform`
+- Card 3: `< 3s` / `Rata-rata Waktu Respons`
+
+---
+
+**Section 3 — Trust pillars**, margin-top 64px, `display: grid`, `grid-template-columns: repeat(3, 1fr)`, gap 24px.
+
+Each pillar card:
+- `background: #141414`, `border: 1px solid #2a2a2a`, radius 12px, padding 28px
+- Tag label: 11px/600, `background: var(--gradient)`, `-webkit-background-clip: text`, `-webkit-text-fill-color: transparent`, uppercase, letter-spacing 1.5px, margin-bottom 12px
+- Title: 16px/600, white
+- Body: 14px/400, `#8a8a8a`, margin-top 8px, line-height 1.6
+
+Pillar 1 — tag: `PRIVASI` / title: `Privasi Terjaga`  
+`Kami tidak menyimpan tweet, profil, atau hasil analisis. Setiap permintaan diproses secara stateless.`
+
+Pillar 2 — tag: `METODOLOGI` / title: `Metodologi Terbuka`  
+`Formula skor kami bersifat deterministik dan terdokumentasi. Tidak ada kotak hitam — siapa pun dapat memverifikasi logikanya.`
+
+Pillar 3 — tag: `INTEGRITAS` / title: `Tidak Menuduh`  
+`Hasil kami adalah indikator risiko, bukan vonis. Kami selalu menyertakan caveat agar interpretasi tetap bertanggung jawab.`
+
+---
+
+**Section 4 — Safety note**, margin-top 48px — **mandatory, must always be visible, must not be collapsible**:
+- Container: `background: #141414`, `border: 1px solid #2a2a2a`, `border-left: 4px solid #f97316`, radius 12px, padding 24px 32px, `width: 100%`
+- Text (16px/400, `#c8c8c8`):  
+  `Catatan Penting: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.`
 
 ---
 
@@ -202,7 +256,7 @@ export default function App() {
 ### Navbar.jsx — active link highlight
 ```jsx
 import { NavLink } from 'react-router-dom';
-import logo from '../assets/logo.png';
+import logo from '../assets/lacak-buzzer-logo.webp';
 
 export default function Navbar() {
   const linkStyle = ({ isActive }) => ({
@@ -245,8 +299,10 @@ const toggle = (i) => setOpenIndex(openIndex === i ? null : i);
 ---
 
 ## Responsive Rules
-- Below 768px: hero columns stack (card below text), stat row wraps, about columns stack, navbar links reduce font size
+- Below 768px: hero columns stack (card below text), stat row wraps, navbar links reduce font size
 - Hero headline: 48px on mobile, 64px on tablet
+- About page below 768px: both grid sections (`Section 2` and `Section 3`) switch to `grid-template-columns: 1fr` — single column stacked
+- About page `Section 3` trust pillars below 640px: stack vertically, each card full width
 
 ---
 
