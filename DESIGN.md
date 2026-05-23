@@ -1,10 +1,28 @@
 # Lacak Buzzer — Design System (Multi-Page)
 
 ## Instruction for AI
-You are given this spec + a logo image. Output a **single complete HTML file** implementing exactly 3 separate pages with JavaScript-based routing (show/hide sections). Do not add extra sections, do not change colors, do not change copy. Use the logo image embedded as base64 or referenced as `logo.png`.
+You are given this spec + a logo image. Output a **React + Vite project** implementing exactly 3 separate pages using React Router. Do not add extra sections, do not change colors, do not change copy. Place the logo at `src/assets/lacak-buzzer-logo.webp` and import it normally.
+
+Tech stack: **React**, **Vite**, **Tailwind CSS** (for utility classes only — all design tokens below must be applied via the CSS variables defined in `index.css`, not Tailwind color classes).
+
+Project structure to generate:
+```
+src/
+├── assets/
+│   └── lacak-buzzer-logo.webp
+├── components/
+│   └── Navbar.jsx
+├── pages/
+│   ├── Home.jsx
+│   ├── About.jsx
+│   └── FAQ.jsx
+├── App.jsx          ← React Router routes
+├── main.jsx
+└── index.css        ← CSS variables + base styles
+```
 
 The 3 pages are: **Home**, **About**, **FAQ**  
-Navigation switches between pages — only one page visible at a time. Active nav link has white color.
+Use `react-router-dom` (`<BrowserRouter>`, `<Routes>`, `<Route>`) for routing — not show/hide. Active nav link has white color (`#ffffff`); inactive is `#8a8a8a`.
 
 ---
 
@@ -88,7 +106,7 @@ Inside the card (top to bottom):
    - Default active: "Username"
 3. Input row (margin-top 20px) — display flex, gap 8px:
    - Input: `background: #0a0a0a`, `border: 1px solid #2a2a2a`, radius 6px, padding `12px 16px`, font `var(--font-mono)`, placeholder `@username`, color white, flex 1
-   - Button: `background: var(--gradient)`, white, padding `12px 20px`, radius 6px, 15px/600, label `🔍 Analisis`
+   - Button: `background: var(--gradient)`, white, padding `12px 20px`, radius 6px, 15px/600, label `Analisis`
 4. Helper text (margin-top 12px): 12px/400, `#555555`  
    `* Masukkan username tanpa @, URL tweet lengkap, atau beberapa username dipisah koma untuk analisis bulk.`
 
@@ -122,7 +140,7 @@ Full-page section, `padding: 80px 32px`, max-width 1200px centered.
 4. Safety note (margin-top 64px) — **mandatory, must always be visible**:
    - Container: `background: #141414`, `border: 1px solid #2a2a2a`, `border-left: 4px solid #f97316`, radius 12px, padding 24px 32px
    - Text (16px/400, `#c8c8c8`):  
-     `⚠️ Catatan Penting: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.`
+     `Catatan Penting: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.`
 
 ---
 
@@ -157,51 +175,71 @@ Full-page section, `padding: 80px 32px`, max-width 800px centered.
 
 ---
 
-## JavaScript — Page Routing
+## React Router — Routing Setup
 
-```javascript
-function showPage(pageName) {
-  document.querySelectorAll('.page').forEach(p => p.style.display = 'none');
-  document.getElementById('page-' + pageName).style.display = 'block';
-  document.querySelectorAll('.nav-link').forEach(l => {
-    l.style.color = l.dataset.page === pageName ? '#ffffff' : '#8a8a8a';
-  });
+### App.jsx
+```jsx
+import { BrowserRouter, Routes, Route } from 'react-router-dom';
+import Navbar from './components/Navbar';
+import Home from './pages/Home';
+import About from './pages/About';
+import FAQ from './pages/FAQ';
+
+export default function App() {
+  return (
+    <BrowserRouter>
+      <Navbar />
+      <Routes>
+        <Route path="/" element={<Home />} />
+        <Route path="/about" element={<About />} />
+        <Route path="/faq" element={<FAQ />} />
+      </Routes>
+    </BrowserRouter>
+  );
 }
+```
 
-// Nav links must have: data-page="home", data-page="about", data-page="faq"
-document.querySelectorAll('.nav-link').forEach(link => {
-  link.addEventListener('click', (e) => {
-    e.preventDefault();
-    showPage(link.dataset.page);
+### Navbar.jsx — active link highlight
+```jsx
+import { NavLink } from 'react-router-dom';
+import logo from '../assets/logo.png';
+
+export default function Navbar() {
+  const linkStyle = ({ isActive }) => ({
+    color: isActive ? '#ffffff' : '#8a8a8a',
+    fontSize: '14px',
+    fontWeight: 600,
+    textDecoration: 'none',
   });
-});
 
-// Default: show home on load
-showPage('home');
+  return (
+    <nav style={{ /* sticky styles per spec */ }}>
+      <img src={logo} height="36" alt="Lacak Buzzer" />
+      <div>
+        <NavLink to="/" style={linkStyle}>Home</NavLink>
+        <NavLink to="/about" style={linkStyle}>About</NavLink>
+        <NavLink to="/faq" style={linkStyle}>FAQ</NavLink>
+      </div>
+      <button style={{ background: 'var(--gradient)' }}>Coba Gratis</button>
+    </nav>
+  );
+}
+```
 
-// Tab switching in Home page
-document.querySelectorAll('.tab-btn').forEach(btn => {
-  btn.addEventListener('click', () => {
-    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-    btn.classList.add('active');
-    const placeholders = {
-      'Username': '@username',
-      'URL Tweet': 'https://x.com/user/status/...',
-      'Bulk': 'user1, user2, user3'
-    };
-    document.querySelector('.analysis-input').placeholder = placeholders[btn.textContent] || '@username';
-  });
-});
+### Tab switching in Home.jsx
+```jsx
+const [activeTab, setActiveTab] = useState('Username');
+const placeholders = {
+  'Username': '@username',
+  'URL Tweet': 'https://x.com/user/status/...',
+  'Bulk': 'user1, user2, user3',
+};
+```
 
-// FAQ accordion
-document.querySelectorAll('.faq-question').forEach(q => {
-  q.addEventListener('click', () => {
-    const item = q.parentElement;
-    item.classList.toggle('open');
-    q.querySelector('.faq-arrow').style.transform =
-      item.classList.contains('open') ? 'rotate(180deg)' : 'rotate(0deg)';
-  });
-});
+### FAQ accordion in FAQ.jsx
+```jsx
+const [openIndex, setOpenIndex] = useState(null);
+const toggle = (i) => setOpenIndex(openIndex === i ? null : i);
 ```
 
 ---
