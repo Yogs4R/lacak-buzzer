@@ -35,6 +35,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# twscrape
+backend/accounts.txt
+backend/accounts.db
+backend/inject.py
+backend/test_run.py
+
 # Vite/Frontend
 frontend/node_modules/
 frontend/dist/
@@ -53,6 +59,3 @@ Thumbs.db
 # BMAD (Agentic AI Assistant)
 _bmad-output/
 _bmad/config.user.toml
-# Opsional: Abaikan seluruh folder _bmad karena bersifat konfigurasi asisten lokal
-_bmad/
-
