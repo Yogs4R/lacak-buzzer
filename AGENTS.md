@@ -68,7 +68,8 @@ Do not add a database for MVP.
 
 ## Project Structure
 
-buzzer-radar-mvp/
+```text
+lacak-buzzer/
 ├── .github/
 │   ├── changelog-config.json
 │   └── workflows/
@@ -114,6 +115,7 @@ buzzer-radar-mvp/
 ├── .env.example
 ├── Procfile
 └── railway.json
+```
 
 ## Data Collection
 

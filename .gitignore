@@ -35,6 +35,12 @@ share/python-wheels/
 *.egg
 MANIFEST
 
+# twscrape
+backend/accounts.txt
+backend/accounts.db
+backend/inject.py
+backend/test_run.py
+
 # Vite/Frontend
 frontend/node_modules/
 frontend/dist/

@@ -115,7 +115,7 @@ Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
 ### Backend (API)
 
 **Langkah 1: Setup Awal (Cukup dilakukan sekali)**
-Buka PowerShell, lalu jalankan perintah berikut untuk membuat *virtual environment* menggunakan Python 3.12:
+Buka PowerShell, lalu jalankan perintah berikut untuk membuat *virtual environment* menggunakan Python 3.12 (Jangan lupa download python versi 3.12 di [python.org](https://www.python.org/downloads/)):
 ```powershell
 cd backend
 py -3.12 -m venv venv
