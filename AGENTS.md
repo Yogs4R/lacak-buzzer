@@ -145,8 +145,8 @@ Tweet limits:
 
 Low-data behavior:
 
-- Fewer than 20 collected tweets: return insufficient data, no normal score.
-- 20-49 collected tweets: return a score with low confidence.
+- Fewer than 10 collected tweets: return insufficient data, no normal score.
+- 10-49 collected tweets: return a score with low confidence.
 - 50 or more collected tweets: return normal confidence.
 
 ## Storage Rules
@@ -546,8 +546,8 @@ Do not use these bands as accusations.
 
 Use these labels:
 
-- fewer than 20 tweets: insufficient data, no normal score
-- 20-49 tweets: `rendah`
+- fewer than 10 tweets: insufficient data, no normal score
+- 10-49 tweets: `rendah`
 - 50 or more tweets: `normal`
 
 Low confidence output must clearly state:
@@ -620,8 +620,8 @@ Agents must add tests for:
 - anti-false-positive reducers
 - risk band mapping
 - confidence labels
-- insufficient data below 20 tweets
-- low confidence from 20-49 tweets
+- insufficient data below 10 tweets
+- low confidence from 10-49 tweets
 - website URL parsing
 - website IP rate limit
 - bot mention parsing
