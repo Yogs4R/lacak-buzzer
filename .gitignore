@@ -57,5 +57,6 @@ ehthumbs.db
 Thumbs.db
 
 # BMAD (Agentic AI Assistant)
+_bmad/
 _bmad-output/
 _bmad/config.user.toml
