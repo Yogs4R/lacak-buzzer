@@ -413,7 +413,7 @@ sentence-transformers/all-MiniLM-L6-v2
 Output:
 
 ```text
-avg_similarity in [0, 1]
+semantic_similarity in [0, 1]
 ```
 
 Process embeddings in batches. Keep memory usage low. Do not store embeddings after scoring.
@@ -477,8 +477,12 @@ Any scoring change requires explicit human approval.
 
 Normalization:
 
+Raw metrics are scoring input. Normalized metrics are internal/display scoring components.
+
+Normalization thresholds are fixed MVP heuristics from this document. They are not scientific proof that an account is coordinated, fake, paid, malicious, or intentional.
+
 ```python
-similarity = avg_similarity * 100
+similarity = semantic_similarity * 100
 hashtags = min(avg_hashtags_per_post / 4 * 100, 100)
 activity = min(posts_per_day / 80 * 100, 100)
 
@@ -493,6 +497,8 @@ if bio_is_empty:
 
 interval = (1 - posting_entropy) * 100
 ```
+
+Use float normalized components for score calculation. Round only the final score and displayed metric breakdown.
 
 Final score:
 
@@ -514,10 +520,23 @@ Clamp:
 final_score = min(final_score, 100)
 ```
 
+Clamp raw ratio-like values to `[0.0, 1.0]` before scoring:
+
+- `semantic_similarity`
+- `url_ratio`
+- `photo_ratio`
+- `mention_ratio`
+- `reply_ratio`
+- `posting_entropy`
+
+Clamp normalized display metric values to `[0, 100]`.
+
+For MVP v1, do not raise validation errors for impossible raw metric inputs. Clamp them instead.
+
 Anti-false-positive logic:
 
 ```python
-diversity_score = 1 - avg_similarity
+diversity_score = 1 - semantic_similarity
 
 if diversity_score > 0.6:
     final_score *= 0.7
