@@ -1,65 +1,415 @@
-export default function ResultCard() {
+// Task 32 — frontend/src/components/ResultCard.jsx
+// Menampilkan skor, risk band, confidence, metrik, sinyal, penjelasan, dan caveat wajib.
+
+const RISK_BAND_COLOR = {
+  Rendah: '#22c55e',
+  Sedang: '#eab308',
+  Tinggi: '#f97316',
+  Ekstrem: '#ef4444',
+}
+
+const METRIC_LABELS = {
+  semantic_similarity: 'Kemiripan Semantik',
+  hashtag_density: 'Kepadatan Hashtag',
+  activity_intensity: 'Intensitas Aktivitas',
+  media_url_ratio: 'Rasio Media & URL',
+  interaction_behavior: 'Perilaku Interaksi',
+  profile_risk: 'Risiko Profil',
+  posting_interval_regularity: 'Regulasi Interval Posting',
+}
+
+function getRiskBandColor(riskBand) {
+  return RISK_BAND_COLOR[riskBand] || '#8a8a8a'
+}
+
+function ScoreDisplay({ score, riskBand }) {
+  const color = getRiskBandColor(riskBand)
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-200 overflow-hidden">
-      <div className="p-6 border-b border-gray-100 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-        <div>
-          <h2 className="text-xl font-bold text-gray-900">Hasil Analisis</h2>
-          <p className="text-gray-500 text-sm">Menampilkan data untuk @akun_contoh</p>
-        </div>
-        <div className="flex items-center gap-3">
-          <div className="bg-red-50 border border-red-100 text-red-700 px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2">
-            <span className="relative flex h-3 w-3">
-              <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-red-400 opacity-75"></span>
-              <span className="relative inline-flex rounded-full h-3 w-3 bg-red-500"></span>
-            </span>
-            Risiko Ekstrem
-          </div>
-          <div className="bg-gray-900 text-white px-4 py-2 rounded-lg text-sm font-bold">
-            85/100
-          </div>
-        </div>
+    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+      <div
+        style={{
+          fontSize: '64px',
+          fontWeight: 700,
+          lineHeight: 1,
+          color,
+          fontFamily: 'var(--font-main)',
+        }}
+      >
+        {score}
       </div>
-      
-      <div className="p-6 grid grid-cols-1 md:grid-cols-2 gap-8">
-        <div>
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Sinyal Perilaku</h3>
-          <ul className="space-y-3">
-            <li className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <span className="text-gray-700 font-medium">Kemiripan antar tweet sangat tinggi</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <span className="text-gray-700 font-medium">Intensitas postingan di luar kewajaran</span>
-            </li>
-            <li className="flex items-start gap-3">
-              <svg className="w-5 h-5 text-blue-500 mt-0.5 shrink-0" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/><polyline points="22 4 12 14.01 9 11.01"/></svg>
-              <span className="text-gray-700 font-medium">Profil baru tanpa riwayat bio (Kosong)</span>
-            </li>
-          </ul>
-        </div>
-        
-        <div>
-          <h3 className="text-sm font-bold text-gray-400 uppercase tracking-wider mb-4">Penjelasan Analisis</h3>
-          <p className="text-gray-700 leading-relaxed text-sm">
-            Akun ini menunjukkan pola aktivitas terotomatisasi atau terkoordinasi yang kuat. 
-            Dari 100 tweet terakhir, terdapat tingkat repetisi dan kesamaan teks yang berlebihan. 
-            Selain itu, volume interaksi dalam waktu singkat mengindikasikan amplifikasi pesan tertentu 
-            secara tidak natural.
-          </p>
-          <div className="mt-4 pt-4 border-t border-gray-100 flex items-center justify-between">
-            <span className="text-xs text-gray-500">Jumlah Tweet: 100</span>
-            <span className="text-xs px-2 py-1 bg-green-100 text-green-700 rounded font-medium">Confidence: Normal</span>
-          </div>
-        </div>
-      </div>
-      
-      <div className="bg-yellow-50 p-4 border-t border-yellow-100 flex gap-3 text-sm">
-        <svg className="w-5 h-5 text-yellow-600 shrink-0 mt-0.5" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m21.73 18-8-14a2 2 0 0 0-3.48 0l-8 14A2 2 0 0 0 4 21h16a2 2 0 0 0 1.73-3Z"/><path d="M12 9v4"/><path d="M12 17h.01"/></svg>
-        <p className="text-yellow-800">
-          <strong>Catatan:</strong> Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.
-        </p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+        <span
+          style={{
+            fontSize: '11px',
+            fontWeight: 600,
+            letterSpacing: '1.5px',
+            textTransform: 'uppercase',
+            color: '#8a8a8a',
+          }}
+        >
+          dari 100
+        </span>
+        <span
+          style={{
+            fontSize: '14px',
+            fontWeight: 600,
+            color,
+            letterSpacing: '0.5px',
+          }}
+        >
+          {riskBand}
+        </span>
       </div>
     </div>
+  )
+}
+
+function MetricBar({ label, value }) {
+  const color =
+    value >= 80
+      ? '#ef4444'
+      : value >= 65
+      ? '#f97316'
+      : value >= 40
+      ? '#eab308'
+      : '#22c55e'
+
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+        <span
+          style={{
+            fontSize: '12px',
+            fontWeight: 600,
+            color: '#8a8a8a',
+            textTransform: 'uppercase',
+            letterSpacing: '0.5px',
+          }}
+        >
+          {label}
+        </span>
+        <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>{value}</span>
+      </div>
+      <div
+        style={{
+          height: '4px',
+          background: '#2a2a2a',
+          borderRadius: '2px',
+          overflow: 'hidden',
+        }}
+      >
+        <div
+          style={{
+            height: '100%',
+            width: `${value}%`,
+            background: color,
+            borderRadius: '2px',
+            transition: 'width 0.6s ease',
+          }}
+        />
+      </div>
+    </div>
+  )
+}
+
+function CaveatBlock({ text }) {
+  return (
+    <div
+      style={{
+        background: '#141414',
+        border: '1px solid #2a2a2a',
+        borderLeft: '4px solid #f97316',
+        borderRadius: '12px',
+        padding: '20px 24px',
+        width: '100%',
+      }}
+    >
+      <p
+        style={{
+          fontSize: '14px',
+          fontWeight: 400,
+          color: '#c8c8c8',
+          lineHeight: 1.7,
+          margin: 0,
+        }}
+      >
+        {text ||
+          'Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.'}
+      </p>
+    </div>
+  )
+}
+
+export default function ResultCard({ data, onReset }) {
+  if (!data) return null
+
+  const {
+    target,
+    score,
+    risk_band,
+    confidence,
+    tweet_count,
+    metrics = {},
+    signals = [],
+    explanation,
+    caveat,
+  } = data
+
+  const isLowConfidence = confidence === 'rendah'
+
+  return (
+    <section
+      style={{
+        background: '#141414',
+        border: '1px solid #2a2a2a',
+        borderRadius: '12px',
+        padding: '28px',
+        boxShadow:
+          '0 4px 6px rgba(0,0,0,0.3), 0 20px 40px rgba(0,0,0,0.5), 0 0 60px rgba(249,115,22,0.08)',
+        display: 'flex',
+        flexDirection: 'column',
+        gap: '24px',
+      }}
+    >
+      {/* Header: username + score */}
+      <div
+        style={{
+          display: 'flex',
+          flexDirection: 'column',
+          gap: '16px',
+          paddingBottom: '20px',
+          borderBottom: '1px solid #2a2a2a',
+        }}
+      >
+        <div>
+          <p
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#8a8a8a',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '6px',
+            }}
+          >
+            HASIL ANALISIS
+          </p>
+          <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+            @{target}
+          </h2>
+        </div>
+
+        <ScoreDisplay score={score} riskBand={risk_band} />
+
+        {/* Confidence */}
+        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
+          <span
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#8a8a8a',
+              letterSpacing: '1px',
+              textTransform: 'uppercase',
+            }}
+          >
+            Confidence:
+          </span>
+          <span
+            style={{
+              fontSize: '12px',
+              fontWeight: 600,
+              color: isLowConfidence ? '#eab308' : '#22c55e',
+              background: isLowConfidence
+                ? 'rgba(234,179,8,0.1)'
+                : 'rgba(34,197,94,0.1)',
+              border: `1px solid ${isLowConfidence ? 'rgba(234,179,8,0.3)' : 'rgba(34,197,94,0.3)'}`,
+              borderRadius: '6px',
+              padding: '2px 10px',
+            }}
+          >
+            {isLowConfidence ? 'Rendah' : 'Normal'}
+          </span>
+          {tweet_count && (
+            <span style={{ fontSize: '12px', color: '#8a8a8a' }}>
+              ({tweet_count} tweet dikumpulkan)
+            </span>
+          )}
+        </div>
+
+        {isLowConfidence && (
+          <p style={{ fontSize: '13px', color: '#eab308', margin: 0, lineHeight: 1.6 }}>
+            Kepercayaan hasil rendah karena jumlah tweet yang tersedia terbatas.
+          </p>
+        )}
+      </div>
+
+      {/* Metric Breakdown */}
+      {Object.keys(metrics).length > 0 && (
+        <div>
+          <h3
+            style={{
+              fontSize: '11px',
+              fontWeight: 600,
+              color: '#8a8a8a',
+              letterSpacing: '2px',
+              textTransform: 'uppercase',
+              marginBottom: '16px',
+            }}
+          >
+            BREAKDOWN METRIK
+          </h3>
+          <div
+            style={{
+              display: 'grid',
+              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
+              gap: '12px',
+            }}
+          >
+            {Object.entries(metrics).map(([key, value]) => (
+              <div
+                key={key}
+                style={{
+                  background: '#0a0a0a',
+                  border: '1px solid #2a2a2a',
+                  borderRadius: '8px',
+                  padding: '14px',
+                }}
+              >
+                <MetricBar label={METRIC_LABELS[key] || key} value={value} />
+              </div>
+            ))}
+          </div>
+        </div>
+      )}
+
+      {/* Signals + Explanation */}
+      <div
+        style={{
+          display: 'grid',
+          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
+          gap: '20px',
+        }}
+      >
+        {signals.length > 0 && (
+          <div
+            style={{
+              background: '#0a0a0a',
+              border: '1px solid #2a2a2a',
+              borderRadius: '8px',
+              padding: '20px',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#8a8a8a',
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                marginBottom: '14px',
+              }}
+            >
+              SINYAL PERILAKU
+            </h3>
+            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+              {signals.map((signal, i) => (
+                <li
+                  key={i}
+                  style={{
+                    display: 'flex',
+                    alignItems: 'flex-start',
+                    gap: '10px',
+                    fontSize: '14px',
+                    color: '#c8c8c8',
+                    lineHeight: 1.6,
+                  }}
+                >
+                  <span
+                    style={{
+                      marginTop: '6px',
+                      width: '6px',
+                      height: '6px',
+                      borderRadius: '50%',
+                      background: '#f97316',
+                      flexShrink: 0,
+                      display: 'inline-block',
+                    }}
+                  />
+                  {signal}
+                </li>
+              ))}
+            </ul>
+          </div>
+        )}
+
+        {explanation && (
+          <div
+            style={{
+              background: '#0a0a0a',
+              border: '1px solid #2a2a2a',
+              borderRadius: '8px',
+              padding: '20px',
+            }}
+          >
+            <h3
+              style={{
+                fontSize: '11px',
+                fontWeight: 600,
+                color: '#8a8a8a',
+                letterSpacing: '2px',
+                textTransform: 'uppercase',
+                marginBottom: '14px',
+              }}
+            >
+              PENJELASAN ANALISIS
+            </h3>
+            <p
+              style={{
+                fontSize: '14px',
+                color: '#c8c8c8',
+                lineHeight: 1.75,
+                margin: 0,
+              }}
+            >
+              {explanation}
+            </p>
+          </div>
+        )}
+      </div>
+
+      {/* Caveat — mandatory, always visible, never collapsible */}
+      <CaveatBlock text={caveat} />
+
+      {/* Analisis Lagi button */}
+      {onReset && (
+        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+          <button
+            onClick={onReset}
+            style={{
+              background: 'transparent',
+              border: '1px solid #2a2a2a',
+              borderRadius: '6px',
+              padding: '10px 20px',
+              color: '#c8c8c8',
+              fontSize: '14px',
+              fontWeight: 600,
+              cursor: 'pointer',
+              fontFamily: 'var(--font-main)',
+              transition: 'border-color 0.2s, color 0.2s',
+            }}
+            onMouseEnter={(e) => {
+              e.currentTarget.style.borderColor = '#f97316'
+              e.currentTarget.style.color = '#ffffff'
+            }}
+            onMouseLeave={(e) => {
+              e.currentTarget.style.borderColor = '#2a2a2a'
+              e.currentTarget.style.color = '#c8c8c8'
+            }}
+          >
+            ← Analisis Lagi
+          </button>
+        </div>
+      )}
+    </section>
   )
 }
