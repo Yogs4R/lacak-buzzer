@@ -60,3 +60,6 @@ Thumbs.db
 _bmad/
 _bmad-output/
 _bmad/config.user.toml
+# Pytest
+.pytest_cache/
+
