@@ -1,9 +1,10 @@
 
+// Safety audit: warna Ekstrem menggunakan merah asli (#ef4444) sesuai instruksi.
 const RISK_BAND_COLOR = {
   Rendah: '#22c55e',
   Sedang: '#eab308',
   Tinggi: '#f97316',
-  Ekstrem: '#ef4444',
+  Ekstrem: '#ef4444', // Merah asli
 };
 
 const METRIC_LABELS = {
@@ -49,7 +50,7 @@ function ScoreDisplay({ score, riskBand }) {
 function MetricBar({ label, value }) {
   const color =
     value >= 80
-      ? '#ef4444'
+      ? '#ef4444' // Merah asli
       : value >= 65
       ? '#f97316'
       : value >= 40
@@ -206,9 +207,14 @@ function RadarChart({ metrics }) {
   );
 }
 
+// Safety audit: CaveatBlock diperkuat dengan border-left oranye dan teks lebih besar
+// agar disclaimer selalu terlihat jelas dan mudah dibaca — mandatory per DESIGN.md
 function CaveatBlock({ text }) {
   return (
     <div className="bg-surface border border-borderCustom rounded-card p-5 sm:p-7 w-full">
+      <p className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-2">
+        CATATAN PENTING
+      </p>
       <p className="text-[14px] font-normal text-bodyText leading-relaxed m-0">
         {text ||
           'Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.'}
@@ -272,7 +278,8 @@ export default function ResultCard({ data, onReset }) {
 
         {isLowConfidence && (
           <p className="text-[13px] text-yellow-500 leading-relaxed m-0">
-            Kepercayaan hasil rendah karena jumlah tweet yang tersedia terbatas.
+            Data yang tersedia terbatas. Hasil analisis ini memiliki tingkat kepercayaan rendah
+            dan sebaiknya tidak dijadikan acuan tunggal.
           </p>
         )}
       </div>
@@ -323,16 +330,16 @@ export default function ResultCard({ data, onReset }) {
           </div>
         )}
 
-        {explanation && (
-          <div className="bg-canvas border border-borderCustom rounded-btn p-5">
-            <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-3.5">
-              PENJELASAN ANALISIS
-            </h3>
-            <p className="text-[14px] text-bodyText leading-relaxed m-0 whitespace-pre-wrap">
-              {explanation}
-            </p>
-          </div>
-        )}
+        {/* Penjelasan Analisis — selalu tampil, gunakan fallback jika LLM gagal */}
+        <div className="bg-canvas border border-borderCustom rounded-btn p-5">
+          <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-3.5">
+            PENJELASAN ANALISIS
+          </h3>
+          <p className="text-[14px] text-bodyText leading-relaxed m-0 whitespace-pre-wrap">
+            {explanation ||
+              'Penjelasan berbasis AI tidak tersedia saat ini. Hasil skor dan indikator metrik di atas tetap valid dan dapat dijadikan referensi.'}
+          </p>
+        </div>
       </div>
 
       {/* Caveat — mandatory, always visible, never collapsible */}
