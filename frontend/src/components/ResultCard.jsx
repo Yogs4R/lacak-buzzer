@@ -1,12 +1,10 @@
-// Task 32 — frontend/src/components/ResultCard.jsx
-// Menampilkan skor, risk band, confidence, metrik, sinyal, penjelasan, dan caveat wajib.
 
 const RISK_BAND_COLOR = {
   Rendah: '#22c55e',
   Sedang: '#eab308',
   Tinggi: '#f97316',
   Ekstrem: '#ef4444',
-}
+};
 
 const METRIC_LABELS = {
   semantic_similarity: 'Kemiripan Semantik',
@@ -16,52 +14,36 @@ const METRIC_LABELS = {
   interaction_behavior: 'Perilaku Interaksi',
   profile_risk: 'Risiko Profil',
   posting_interval_regularity: 'Regulasi Interval Posting',
-}
+};
 
 function getRiskBandColor(riskBand) {
-  return RISK_BAND_COLOR[riskBand] || '#8a8a8a'
+  return RISK_BAND_COLOR[riskBand] || '#8a8a8a';
 }
 
 function ScoreDisplay({ score, riskBand }) {
-  const color = getRiskBandColor(riskBand)
+  const color = getRiskBandColor(riskBand);
+
   return (
-    <div style={{ display: 'flex', alignItems: 'center', gap: '16px', flexWrap: 'wrap' }}>
+    <div className="flex items-center gap-4 flex-wrap">
       <div
-        style={{
-          fontSize: '64px',
-          fontWeight: 700,
-          lineHeight: 1,
-          color,
-          fontFamily: 'var(--font-main)',
-        }}
+        className="text-[64px] font-bold leading-none font-main"
+        style={{ color }}
       >
         {score}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-        <span
-          style={{
-            fontSize: '11px',
-            fontWeight: 600,
-            letterSpacing: '1.5px',
-            textTransform: 'uppercase',
-            color: '#8a8a8a',
-          }}
-        >
+      <div className="flex flex-col gap-1.5">
+        <span className="text-[11px] font-semibold tracking-widest uppercase text-mutedText">
           dari 100
         </span>
         <span
-          style={{
-            fontSize: '14px',
-            fontWeight: 600,
-            color,
-            letterSpacing: '0.5px',
-          }}
+          className="text-[14px] font-semibold tracking-wide"
+          style={{ color }}
         >
           {riskBand}
         </span>
       </div>
     </div>
-  )
+  );
 }
 
 function MetricBar({ label, value }) {
@@ -72,76 +54,171 @@ function MetricBar({ label, value }) {
       ? '#f97316'
       : value >= 40
       ? '#eab308'
-      : '#22c55e'
+      : '#22c55e';
 
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: '6px' }}>
-      <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <span
-          style={{
-            fontSize: '12px',
-            fontWeight: 600,
-            color: '#8a8a8a',
-            textTransform: 'uppercase',
-            letterSpacing: '0.5px',
-          }}
-        >
+    <div className="flex flex-col gap-1.5">
+      <div className="flex justify-between items-center">
+        <span className="text-[12px] font-semibold text-mutedText uppercase tracking-wide">
           {label}
         </span>
-        <span style={{ fontSize: '12px', fontWeight: 700, color: '#ffffff' }}>{value}</span>
+        <span className="text-[12px] font-bold text-ink">{value}</span>
       </div>
-      <div
-        style={{
-          height: '4px',
-          background: '#2a2a2a',
-          borderRadius: '2px',
-          overflow: 'hidden',
-        }}
-      >
+      <div className="h-1 bg-borderCustom rounded-sm overflow-hidden">
         <div
+          className="h-full rounded-sm transition-all duration-500 ease-out"
           style={{
-            height: '100%',
             width: `${value}%`,
-            background: color,
-            borderRadius: '2px',
-            transition: 'width 0.6s ease',
+            backgroundColor: color,
           }}
         />
       </div>
     </div>
-  )
+  );
+}
+
+function RadarChart({ metrics }) {
+  const cx = 150;
+  const cy = 150;
+  const r = 85;
+  const keys = Object.keys(metrics);
+  const total = keys.length;
+
+  const labelMap = {
+    semantic_similarity: 'Semantik',
+    hashtag_density: 'Hashtag',
+    activity_intensity: 'Aktivitas',
+    media_url_ratio: 'Media/URL',
+    interaction_behavior: 'Interaksi',
+    profile_risk: 'Profil',
+    posting_interval_regularity: 'Interval',
+  };
+
+  const getCoordinates = (i, scale) => {
+    const angle = (i * 2 * Math.PI) / total - Math.PI / 2;
+    const x = cx + r * scale * Math.cos(angle);
+    const y = cy + r * scale * Math.sin(angle);
+    return { x, y };
+  };
+
+  const levels = [0.2, 0.4, 0.6, 0.8, 1.0];
+  const gridPolygons = levels.map((level) => {
+    const points = [];
+    for (let i = 0; i < total; i++) {
+      const { x, y } = getCoordinates(i, level);
+      points.push(`${x},${y}`);
+    }
+    return points.join(' ');
+  });
+
+  const dataPoints = keys.map((key, i) => {
+    const val = metrics[key] || 0;
+    const scale = val / 100;
+    const { x, y } = getCoordinates(i, scale);
+    return { x, y };
+  });
+  const dataPointsStr = dataPoints.map((p) => `${p.x},${p.y}`).join(' ');
+
+  return (
+    <div className="flex flex-col items-center justify-center p-5 bg-canvas border border-borderCustom rounded-btn min-h-[300px]">
+      <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-4">
+        DIAGRAM POLA PERILAKU
+      </h3>
+      <svg viewBox="0 0 300 300" className="w-full max-w-[250px] h-auto">
+        {/* Concentric grid lines */}
+        {gridPolygons.map((points, idx) => (
+          <polygon
+            key={idx}
+            points={points}
+            fill="none"
+            stroke="#222222"
+            strokeWidth="1.2"
+          />
+        ))}
+
+        {/* Axes */}
+        {keys.map((_, i) => {
+          const { x, y } = getCoordinates(i, 1.0);
+          return (
+            <line
+              key={i}
+              x1={cx}
+              y1={cy}
+              x2={x}
+              y2={y}
+              stroke="#222222"
+              strokeWidth="1.2"
+            />
+          );
+        })}
+
+        {/* Data polygon filled */}
+        <polygon
+          points={dataPointsStr}
+          fill="rgba(249, 115, 22, 0.15)"
+          stroke="#f97316"
+          strokeWidth="2"
+          className="animate-fade-in"
+        />
+
+        {/* Data points (circles) */}
+        {dataPoints.map((p, i) => (
+          <circle
+            key={i}
+            cx={p.x}
+            cy={p.y}
+            r="3.5"
+            fill="#e03a1e"
+            stroke="#ffffff"
+            strokeWidth="1"
+          />
+        ))}
+
+        {/* Text labels */}
+        {keys.map((key, i) => {
+          const { x, y } = getCoordinates(i, 1.18);
+          let textAnchor = 'middle';
+          if (x < cx - 10) textAnchor = 'end';
+          else if (x > cx + 10) textAnchor = 'start';
+
+          let dy = '0.35em';
+          if (y < cy - 10) dy = '-0.2em';
+          else if (y > cy + 10) dy = '0.9em';
+
+          return (
+            <text
+              key={i}
+              x={x}
+              y={y}
+              textAnchor={textAnchor}
+              dy={dy}
+              fill="#8a8a8a"
+              fontSize="9.5"
+              fontWeight="600"
+              className="font-main uppercase tracking-wider"
+            >
+              {labelMap[key] || key}
+            </text>
+          );
+        })}
+      </svg>
+    </div>
+  );
 }
 
 function CaveatBlock({ text }) {
   return (
-    <div
-      style={{
-        background: '#141414',
-        border: '1px solid #2a2a2a',
-        borderLeft: '4px solid #f97316',
-        borderRadius: '12px',
-        padding: '20px 24px',
-        width: '100%',
-      }}
-    >
-      <p
-        style={{
-          fontSize: '14px',
-          fontWeight: 400,
-          color: '#c8c8c8',
-          lineHeight: 1.7,
-          margin: 0,
-        }}
-      >
+    <div className="bg-surface border border-borderCustom rounded-card p-5 sm:p-7 w-full">
+      <p className="text-[14px] font-normal text-bodyText leading-relaxed m-0">
         {text ||
           'Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.'}
       </p>
     </div>
-  )
+  );
 }
 
 export default function ResultCard({ data, onReset }) {
-  if (!data) return null
+  if (!data) return null;
 
   const {
     target,
@@ -153,48 +230,19 @@ export default function ResultCard({ data, onReset }) {
     signals = [],
     explanation,
     caveat,
-  } = data
+  } = data;
 
-  const isLowConfidence = confidence === 'rendah'
+  const isLowConfidence = confidence === 'rendah';
 
   return (
-    <section
-      style={{
-        background: '#141414',
-        border: '1px solid #2a2a2a',
-        borderRadius: '12px',
-        padding: '28px',
-        boxShadow:
-          '0 4px 6px rgba(0,0,0,0.3), 0 20px 40px rgba(0,0,0,0.5), 0 0 60px rgba(249,115,22,0.08)',
-        display: 'flex',
-        flexDirection: 'column',
-        gap: '24px',
-      }}
-    >
+    <section className="bg-surface border border-borderCustom rounded-card p-7 shadow-[0_4px_6px_rgba(0,0,0,0.3),_0_20px_40px_rgba(0,0,0,0.5),_0_0_60px_rgba(249,115,22,0.08)] flex flex-col gap-6">
       {/* Header: username + score */}
-      <div
-        style={{
-          display: 'flex',
-          flexDirection: 'column',
-          gap: '16px',
-          paddingBottom: '20px',
-          borderBottom: '1px solid #2a2a2a',
-        }}
-      >
+      <div className="flex flex-col gap-4 pb-5 border-b border-borderCustom">
         <div>
-          <p
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: '#8a8a8a',
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              marginBottom: '6px',
-            }}
-          >
+          <p className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-1.5">
             HASIL ANALISIS
           </p>
-          <h2 style={{ fontSize: '22px', fontWeight: 700, color: '#ffffff', margin: 0 }}>
+          <h2 className="text-[22px] font-bold text-ink m-0">
             @{target}
           </h2>
         </div>
@@ -202,139 +250,72 @@ export default function ResultCard({ data, onReset }) {
         <ScoreDisplay score={score} riskBand={risk_band} />
 
         {/* Confidence */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: '10px', flexWrap: 'wrap' }}>
-          <span
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: '#8a8a8a',
-              letterSpacing: '1px',
-              textTransform: 'uppercase',
-            }}
-          >
+        <div className="flex items-center gap-2.5 flex-wrap">
+          <span className="text-[11px] font-semibold text-mutedText tracking-wider uppercase">
             Confidence:
           </span>
           <span
-            style={{
-              fontSize: '12px',
-              fontWeight: 600,
-              color: isLowConfidence ? '#eab308' : '#22c55e',
-              background: isLowConfidence
-                ? 'rgba(234,179,8,0.1)'
-                : 'rgba(34,197,94,0.1)',
-              border: `1px solid ${isLowConfidence ? 'rgba(234,179,8,0.3)' : 'rgba(34,197,94,0.3)'}`,
-              borderRadius: '6px',
-              padding: '2px 10px',
-            }}
+            className={`text-[12px] font-semibold rounded-btn px-2.5 py-0.5 border ${
+              isLowConfidence
+                ? 'text-yellow-500 bg-yellow-500/10 border-yellow-500/30'
+                : 'text-green-500 bg-green-500/10 border-green-500/30'
+            }`}
           >
             {isLowConfidence ? 'Rendah' : 'Normal'}
           </span>
           {tweet_count && (
-            <span style={{ fontSize: '12px', color: '#8a8a8a' }}>
+            <span className="text-[12px] text-mutedText">
               ({tweet_count} tweet dikumpulkan)
             </span>
           )}
         </div>
 
         {isLowConfidence && (
-          <p style={{ fontSize: '13px', color: '#eab308', margin: 0, lineHeight: 1.6 }}>
+          <p className="text-[13px] text-yellow-500 leading-relaxed m-0">
             Kepercayaan hasil rendah karena jumlah tweet yang tersedia terbatas.
           </p>
         )}
       </div>
 
-      {/* Metric Breakdown */}
+      {/* Metric Breakdown & Radar Chart */}
       {Object.keys(metrics).length > 0 && (
-        <div>
-          <h3
-            style={{
-              fontSize: '11px',
-              fontWeight: 600,
-              color: '#8a8a8a',
-              letterSpacing: '2px',
-              textTransform: 'uppercase',
-              marginBottom: '16px',
-            }}
-          >
-            BREAKDOWN METRIK
-          </h3>
-          <div
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(auto-fill, minmax(220px, 1fr))',
-              gap: '12px',
-            }}
-          >
-            {Object.entries(metrics).map(([key, value]) => (
-              <div
-                key={key}
-                style={{
-                  background: '#0a0a0a',
-                  border: '1px solid #2a2a2a',
-                  borderRadius: '8px',
-                  padding: '14px',
-                }}
-              >
-                <MetricBar label={METRIC_LABELS[key] || key} value={value} />
-              </div>
-            ))}
+        <div className="grid grid-cols-1 lg:grid-cols-[1.1fr_0.9fr] gap-6">
+          {/* Left Column: Metrics list */}
+          <div>
+            <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-4">
+              BREAKDOWN METRIK
+            </h3>
+            <div className="grid gap-3 grid-cols-1 min-[480px]:grid-cols-2">
+              {Object.entries(metrics).map(([key, value]) => (
+                <div
+                  key={key}
+                  className="bg-canvas border border-borderCustom rounded-btn p-3.5"
+                >
+                  <MetricBar label={METRIC_LABELS[key] || key} value={value} />
+                </div>
+              ))}
+            </div>
           </div>
+
+          {/* Right Column: Radar Chart */}
+          <RadarChart metrics={metrics} />
         </div>
       )}
 
       {/* Signals + Explanation */}
-      <div
-        style={{
-          display: 'grid',
-          gridTemplateColumns: 'repeat(auto-fit, minmax(260px, 1fr))',
-          gap: '20px',
-        }}
-      >
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
         {signals.length > 0 && (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #2a2a2a',
-              borderRadius: '8px',
-              padding: '20px',
-            }}
-          >
-            <h3
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#8a8a8a',
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
-                marginBottom: '14px',
-              }}
-            >
+          <div className="bg-canvas border border-borderCustom rounded-btn p-5">
+            <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-3.5">
               SINYAL PERILAKU
             </h3>
-            <ul style={{ listStyle: 'none', margin: 0, padding: 0, display: 'flex', flexDirection: 'column', gap: '10px' }}>
+            <ul className="list-none m-0 p-0 flex flex-col gap-2.5">
               {signals.map((signal, i) => (
                 <li
                   key={i}
-                  style={{
-                    display: 'flex',
-                    alignItems: 'flex-start',
-                    gap: '10px',
-                    fontSize: '14px',
-                    color: '#c8c8c8',
-                    lineHeight: 1.6,
-                  }}
+                  className="flex items-start gap-2.5 text-[14px] text-bodyText leading-relaxed"
                 >
-                  <span
-                    style={{
-                      marginTop: '6px',
-                      width: '6px',
-                      height: '6px',
-                      borderRadius: '50%',
-                      background: '#f97316',
-                      flexShrink: 0,
-                      display: 'inline-block',
-                    }}
-                  />
+                  <span className="mt-1.5 w-1.5 h-1.5 rounded-full bg-gradEnd flex-shrink-0 inline-block" />
                   {signal}
                 </li>
               ))}
@@ -343,34 +324,11 @@ export default function ResultCard({ data, onReset }) {
         )}
 
         {explanation && (
-          <div
-            style={{
-              background: '#0a0a0a',
-              border: '1px solid #2a2a2a',
-              borderRadius: '8px',
-              padding: '20px',
-            }}
-          >
-            <h3
-              style={{
-                fontSize: '11px',
-                fontWeight: 600,
-                color: '#8a8a8a',
-                letterSpacing: '2px',
-                textTransform: 'uppercase',
-                marginBottom: '14px',
-              }}
-            >
+          <div className="bg-canvas border border-borderCustom rounded-btn p-5">
+            <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-3.5">
               PENJELASAN ANALISIS
             </h3>
-            <p
-              style={{
-                fontSize: '14px',
-                color: '#c8c8c8',
-                lineHeight: 1.75,
-                margin: 0,
-              }}
-            >
+            <p className="text-[14px] text-bodyText leading-relaxed m-0">
               {explanation}
             </p>
           </div>
@@ -382,34 +340,15 @@ export default function ResultCard({ data, onReset }) {
 
       {/* Analisis Lagi button */}
       {onReset && (
-        <div style={{ display: 'flex', justifyContent: 'flex-start' }}>
+        <div className="flex justify-start">
           <button
             onClick={onReset}
-            style={{
-              background: 'transparent',
-              border: '1px solid #2a2a2a',
-              borderRadius: '6px',
-              padding: '10px 20px',
-              color: '#c8c8c8',
-              fontSize: '14px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              fontFamily: 'var(--font-main)',
-              transition: 'border-color 0.2s, color 0.2s',
-            }}
-            onMouseEnter={(e) => {
-              e.currentTarget.style.borderColor = '#f97316'
-              e.currentTarget.style.color = '#ffffff'
-            }}
-            onMouseLeave={(e) => {
-              e.currentTarget.style.borderColor = '#2a2a2a'
-              e.currentTarget.style.color = '#c8c8c8'
-            }}
+            className="bg-transparent border border-borderCustom hover:border-gradEnd hover:text-ink rounded-btn px-5 py-2.5 text-bodyText text-[14px] font-semibold cursor-pointer font-main transition-colors duration-200"
           >
             ← Analisis Lagi
           </button>
         </div>
       )}
     </section>
-  )
+  );
 }

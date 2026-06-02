@@ -1,20 +1,55 @@
+import { NavLink } from 'react-router-dom';
+import logo from '../assets/lacak-buzzer-logo.webp';
+
 export default function Header() {
   return (
-    <header className="bg-white shadow-sm border-b">
-      <div className="container mx-auto px-4 py-4">
-        <div className="flex items-center justify-between">
-          <div className="text-xl font-bold text-blue-600 flex items-center gap-2">
-            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z" /><polyline points="14 2 14 8 20 8" /><path d="m10 13-2 2 2 2" /><path d="m14 17 2-2-2-2" /></svg>
-            Lacak Buzzer
-          </div>
-          <nav>
-            <ul className="flex space-x-6 text-sm font-medium">
-              <li><a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">About</a></li>
-              <li><a href="#" className="text-gray-600 hover:text-blue-600 transition-colors">FAQ</a></li>
-            </ul>
-          </nav>
-        </div>
+    <header className="navbar">
+      <div className="w-full max-w-[1200px] mx-auto flex items-center justify-between gap-4">
+        {/* Left: Logo */}
+        <NavLink to="/" className="flex items-center">
+          <img src={logo} className="logo-3-1" alt="Lacak Buzzer" />
+        </NavLink>
+
+        {/* Middle: Navigation Links */}
+        <nav className="flex items-center gap-6">
+          {['/', '/about', '/faq'].map((path) => {
+            const label = path === '/' ? 'Home' : path === '/about' ? 'About' : 'FAQ';
+            return (
+              <NavLink
+                key={path}
+                to={path}
+                className={({ isActive }) =>
+                  `text-[14px] font-semibold transition-colors duration-200 ${
+                    isActive ? 'text-ink' : 'text-mutedText hover:text-ink'
+                  }`
+                }
+              >
+                {label}
+              </NavLink>
+            );
+          })}
+        </nav>
+
+        {/* Right: Try X Bot Button */}
+        <a
+          href="https://x.com/lacakbuzzer"
+          target="_blank"
+          rel="noopener noreferrer"
+          className="bg-ink text-[#000000] border border-ink hover:bg-[#000000] hover:text-ink hover:border-borderCustom rounded-btn px-4 py-2 font-main text-[14px] font-semibold flex items-center gap-2 transition-all duration-200 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)]"
+        >
+          {/* X Logo SVG */}
+          <svg
+            width="12"
+            height="12"
+            viewBox="0 0 24 24"
+            fill="currentColor"
+            className="inline-block"
+          >
+            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+          </svg>
+          <span>Try X Bot</span>
+        </a>
       </div>
     </header>
-  )
+  );
 }

@@ -96,7 +96,7 @@ export default function SearchBar({ onSubmit, loading = false }) {
           onChange={(event) => setValue(event.target.value)}
           placeholder="https://x.com/username"
           disabled={loading}
-          className="w-full rounded-xl border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-3 font-mono text-sm text-white placeholder:text-[#555555] focus:border-[#f97316] focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 disabled:cursor-not-allowed disabled:opacity-70"
+          className="w-full rounded-xl border border-[#2a2a2a] bg-[#0a0a0a] px-4 py-3 font-mono text-sm text-white placeholder:text-placeholderText focus:border-[#f97316] focus:outline-none focus:ring-2 focus:ring-[#f97316]/40 disabled:cursor-not-allowed disabled:opacity-70"
         />
         <button
           type="submit"
@@ -107,7 +107,7 @@ export default function SearchBar({ onSubmit, loading = false }) {
         </button>
       </div>
 
-      <p className="text-xs leading-5 text-[#555555]">
+      <p className="text-xs leading-5 text-placeholderText">
         Masukkan URL profil X/Twitter atau username untuk memulai analisis.
       </p>
 
