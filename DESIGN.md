@@ -339,3 +339,129 @@ These rules apply to every string rendered in the UI. Any copy change must be re
 ```
 Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.
 ```
+
+---
+
+## Error Messages & Fallback Copy
+
+> **Phase 5 — Rules for all error/fallback states.** Every message below must be safe, friendly, and non-accusatory. Do not use language that implies failure is the user's fault. All strings are in Indonesian (per AGENTS.md).
+
+These rules apply to every error state rendered in the UI (frontend error banners, toast notifications, inline error text inside `ResultCard`, or API error responses displayed to the user).
+
+---
+
+### 1. Invalid URL
+
+**Trigger:** User submits a URL that does not match a supported format (not a valid `x.com` or `twitter.com` tweet/profile URL).
+
+**Approved copy:**
+```
+URL yang kamu masukkan tidak dikenali. Pastikan formatnya seperti:
+https://x.com/username atau https://x.com/username/status/...
+```
+
+**Do's & Don'ts:**
+- ✅ Use: `tidak dikenali`, `format yang didukung`
+- ❌ Avoid: `URL salah`, `link rusak`, `input tidak valid`
+
+---
+
+### 2. Akun Not Found / Private
+
+**Trigger:** The target account does not exist, has been suspended, or is set to private (scraper returns 404 / protected account).
+
+**Approved copy:**
+```
+Akun ini tidak dapat dianalisis. Kemungkinan akun tidak ditemukan,
+telah dihapus, atau profilnya dibatasi (privat).
+```
+
+**Do's & Don'ts:**
+- ✅ Use: `tidak dapat dianalisis`, `dibatasi`, `tidak ditemukan`
+- ❌ Avoid: `akun tidak ada`, `akun palsu`, `akun diblokir`
+
+---
+
+### 3. Rate Limit (Platform X / API)
+
+**Trigger:** The scraper or X API returns a rate-limit error (HTTP 429 or equivalent).
+
+**Approved copy:**
+```
+Sistem sedang mengalami antrean tinggi. Permintaanmu telah diterima —
+silakan coba lagi dalam beberapa menit.
+```
+
+**Do's & Don'ts:**
+- ✅ Use: `antrean tinggi`, `coba lagi dalam beberapa menit`
+- ❌ Avoid: `server error`, `coba lagi nanti` (too vague), `batas penggunaan habis` (implies user fault)
+
+---
+
+### 4. Data Tweet Terbatas (tweet_count < 10 atau rendah)
+
+**Trigger:** The scraper successfully fetches the account but returns fewer than 10 usable tweets, reducing analysis confidence.
+
+**Approved copy — inline warning inside ResultCard:**
+```
+Data yang tersedia terbatas (hanya {tweet_count} tweet terkumpul).
+Hasil analisis ini memiliki tingkat kepercayaan rendah dan sebaiknya
+tidak dijadikan acuan tunggal.
+```
+
+**Do's & Don'ts:**
+- ✅ Use: `data terbatas`, `tingkat kepercayaan rendah`, `tidak dijadikan acuan tunggal`
+- ❌ Avoid: `akun mencurigakan karena sedikit tweet`, `data tidak cukup untuk analisis`
+
+---
+
+### 5. Masalah di Sistem Scraper (General Scraper Error)
+
+**Trigger:** The scraper fails due to network timeout, internal error, or unexpected platform response (non-404, non-429).
+
+**Approved copy:**
+```
+Terjadi kendala saat mengambil data dari platform. Ini bukan
+masalah pada akun yang kamu cari — sistem kami sedang mengalami
+gangguan sementara. Silakan coba beberapa saat lagi.
+```
+
+**Do's & Don'ts:**
+- ✅ Use: `kendala sementara`, `gangguan sementara`, `bukan masalah pada akun`
+- ❌ Avoid: `gagal`, `error sistem`, `tidak bisa memproses` (without context)
+
+---
+
+### 6. Fallback OpenRouter — LLM Gagal Generate Text
+
+**Trigger:** The OpenRouter LLM call fails (timeout, quota exceeded, model unavailable) and no AI-generated explanation can be produced. The analysis score and metrics are still valid; only the `explanation` field is missing.
+
+**Approved copy — shown in the "PENJELASAN ANALISIS" section:**
+```
+Penjelasan berbasis AI tidak tersedia saat ini. Hasil skor dan
+indikator metrik di atas tetap valid dan dapat dijadikan referensi.
+```
+
+**Fallback behavior rules:**
+- The `explanation` field is `null` or empty string → show the fallback copy above inside the `PENJELASAN ANALISIS` block (do not hide the block entirely)
+- Score, risk band, metrics, signals, and caveat must still render normally
+- Do **not** show a generic "Error" label — always show the approved fallback copy
+
+**Do's & Don'ts:**
+- ✅ Use: `tidak tersedia saat ini`, `hasil skor tetap valid`
+- ❌ Avoid: `AI gagal`, `penjelasan error`, `sistem AI bermasalah`
+
+---
+
+### Summary Table — All Error States
+
+| Skenario | Trigger Condition | Key phrase |
+|----------|-------------------|------------|
+| Invalid URL | Format URL tidak dikenali | `tidak dikenali` |
+| Akun not found / private | 404 / protected | `tidak dapat dianalisis` |
+| Rate limit | HTTP 429 / antrean tinggi | `antrean tinggi`, `coba lagi` |
+| Tweet terbatas (< 10) | tweet_count rendah | `kepercayaan rendah` |
+| Scraper error | Network / unexpected error | `kendala sementara` |
+| LLM fallback | explanation null / timeout | `tidak tersedia saat ini` |
+
+> **Critical rule:** No error message may imply that the target account is suspicious, fake, or guilty of any behavior. Error messages describe **system states**, not account characteristics.
