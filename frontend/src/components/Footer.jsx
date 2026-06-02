@@ -16,7 +16,7 @@ export default function Footer() {
           </p>
         </div>
 
-        {/* Right Side: Navigation Links & Github */}
+        {/* Right Side: Navigation Links & Github (Kembali ke versi original) */}
         <div className="flex flex-wrap items-center justify-center sm:justify-end gap-6">
           <a
             href="https://github.com/Yogs4R/lacak-buzzer"
@@ -54,6 +54,9 @@ export default function Footer() {
 export function CaveatBlock({ text }) {
   return (
     <div className="bg-surface border border-borderCustom rounded-card p-5 sm:p-7 w-full">
+      <p className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-2">
+        CATATAN PENTING
+      </p>
       <p className="text-[14px] font-normal text-bodyText leading-relaxed m-0">
         {text ||
           'Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.'}
