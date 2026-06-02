@@ -328,7 +328,7 @@ export default function ResultCard({ data, onReset }) {
             <h3 className="text-[11px] font-semibold text-mutedText tracking-widest uppercase mb-3.5">
               PENJELASAN ANALISIS
             </h3>
-            <p className="text-[14px] text-bodyText leading-relaxed m-0">
+            <p className="text-[14px] text-bodyText leading-relaxed m-0 whitespace-pre-wrap">
               {explanation}
             </p>
           </div>

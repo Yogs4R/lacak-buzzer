@@ -74,6 +74,7 @@ lacak-buzzer/
 │   │   ├── scoring.py                # Implementasi formula penilaian baku
 │   │   └── scraper.py                # Wrapper twscrape untuk mengambil tweets
 │   ├── tests/
+│   │   ├── test_analyze_api.py       # Unit test endpoint analyze
 │   │   ├── test_bot_mentions.py      # Unit test parser mention bot
 │   │   ├── test_confidence.py        # Unit test kalkulasi kepercayaan
 │   │   ├── test_rate_limits.py       # Unit test rate limiter

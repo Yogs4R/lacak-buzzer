@@ -17,7 +17,7 @@ Dokumen ini melacak seluruh siklus pengembangan proyek **Lacak Buzzer** dari fas
 
 ---
 
-## Fase 2: Pembangunan Frontend Web (Dalam Proses 🚧)
+## Fase 2: Pembangunan Frontend Web (Selesai ✅)
 Sesuai instruksi `DESIGN.md`.
 
 - **Konfigurasi Dasar**
@@ -28,32 +28,32 @@ Sesuai instruksi `DESIGN.md`.
   - [x] `Navbar` / `Header.jsx` dengan status link aktif/inaktif.
   - [x] `SearchBar.jsx` dengan Font Monospace (`JetBrains Mono`).
   - [x] `ResultCard.jsx` yang mencakup Score Badge, Metric Breakdown, Signal List, Explanation, dan **Caveat Block**.
-  - [ ] State Handling untuk *Loading* (Spinner) & *Error* (Pesan Bahasa Indonesia).
+  - [x] State Handling untuk *Loading* (Spinner) & *Error* (Pesan Bahasa Indonesia).
 - **Halaman (Routing `react-router-dom`)**
   - [x] `Home.jsx` (Hero Section + Analysis Card).
-  - [ ] `About.jsx` (Dua Kolom, 3 Stat Cards, 3 Trust Pillars, dan blok *Caveat* permanen).
-  - [ ] `FAQ.jsx` (Sistem Accordion 5 pertanyaan dasar).
-  - [ ] Integrasi rute di `App.jsx`.
+  - [x] `About.jsx` (Dua Kolom, 3 Stat Cards, 3 Trust Pillars, dan blok *Caveat* permanen).
+  - [x] `FAQ.jsx` (Sistem Accordion 5 pertanyaan dasar).
+  - [x] Integrasi rute di `App.jsx`.
 
 ---
 
-## Fase 3: Pembangunan Backend & Logika Skor (Fundamental Selesai, Belum Teruji Penuh 🚧)
+## Fase 3: Pembangunan Backend & Logika Skor (Selesai ✅)
 Sesuai instruksi `AGENTS.md`.
 
 - **API & Integrasi Dasar**
   - [x] Setup FastAPI + Uvicorn (`main.py`).
   - [x] Endpoint tunggal: `POST /api/analyze`.
-  - [ ] Rate Limiting berbasis IP/Bot JSON di `rate_limits.py`.
+  - [x] Rate Limiting berbasis IP/Bot JSON di `rate_limits.py`.
 - **Scraping & Feature Extraction**
   - [x] Wrapper `twscrape` untuk profil dan *tweets* (`scraper.py`).
   - [x] Batas 100 tweet *default* (Penanganan 0-19 tweet *insufficient*, 20-49 *low confidence*).
   - [x] Modul MiniLM (`sentence-transformers/all-MiniLM-L6-v2`) berjalan lokal untuk mendeteksi *Semantic Similarity*.
   - [x] Pengukuran metrik *Hashtag Density*, *Activity Intensity*, dll.
 - **Scoring & Explanation**
-  - [ ] Formula penilaian yang sudah di-klaim mutlak (*Fixed MVP Formula*) di `scoring.py`.
-  - [ ] *Anti-false positive reducers* diimplementasikan.
-  - [ ] Penempatan batas risiko 0-100 (Rendah, Sedang, Tinggi, Ekstrem).
-  - [ ] `explanation.py` memanggil OpenRouter LLM dengan *fallback template* Bahasa Indonesia.
+  - [x] Formula penilaian yang sudah di-klaim mutlak (*Fixed MVP Formula*) di `scoring.py`.
+  - [x] *Anti-false positive reducers* diimplementasikan.
+  - [x] Penempatan batas risiko 0-100 (Rendah, Sedang, Tinggi, Ekstrem).
+  - [x] `explanation.py` memanggil OpenRouter LLM dengan *fallback template* Bahasa Indonesia.
 
 ---
 

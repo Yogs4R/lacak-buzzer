@@ -8,6 +8,8 @@ class AnalysisRequest(BaseModel):
     target: str
     source: Literal["website", "x_bot"]
     tweet_limit: int = Field(default=100, ge=50, le=150)
+    requester: Optional[str] = None
+    mention_id: Optional[str] = None
 
 class AnalysisMetrics(BaseModel):
     semantic_similarity: int

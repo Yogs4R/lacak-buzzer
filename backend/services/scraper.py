@@ -12,6 +12,9 @@ async def scrape_tweets(username: str, limit: int = 100):
     if not user_info:
         raise ValueError("account_not_found")
         
+    if getattr(user_info, "protected", False):
+        raise ValueError("protected_account")
+        
     profile_data = {
         "username": user_info.username,
         "bio": user_info.rawDescription,
@@ -22,7 +25,7 @@ async def scrape_tweets(username: str, limit: int = 100):
     raw_tweets = await gather(api.user_tweets(user_info.id, limit=limit))
     
     if len(raw_tweets) < 10:
-        raise ValueError("insufficient_data")
+        raise ValueError("insufficient_data", len(raw_tweets))
         
     tweets_data = []
     for t in raw_tweets:

@@ -9,7 +9,7 @@ export default function Footer() {
         <div className="flex flex-col gap-2 min-w-[200px] text-center sm:text-left">
           <img src={logo} className="logo-3-1-footer mx-auto sm:mx-0" alt="Lacak Buzzer" />
           <p className="text-[13px] text-mutedText m-0">
-            © 2026 Lacak Buzzer.
+            © {new Date().getFullYear()} Lacak Buzzer.
           </p>
           <p className="text-[11px] text-placeholderText m-0">
             Indikator Risiko Amplifikasi Terkoordinasi.

@@ -130,3 +130,47 @@ def analyze_scoring(metrics: dict, tweet_count: int) -> dict:
         "tweet_count": tweet_count,
         "metrics": normalize_metrics(metrics),
     }
+
+
+def generate_signals(normalized_metrics: dict) -> list:
+    """Menghasilkan 2-3 sinyal perilaku netral berdasarkan metrik terstandardisasi."""
+    signals = []
+    
+    if normalized_metrics.get("semantic_similarity", 0) >= 60:
+        signals.append("Kemiripan pesan cukup tinggi")
+    if normalized_metrics.get("hashtag_density", 0) >= 50:
+        signals.append("Pola penggunaan tagar terlihat padat")
+    if normalized_metrics.get("activity_intensity", 0) >= 50:
+        signals.append("Aktivitas posting terlihat intens")
+    if normalized_metrics.get("media_url_ratio", 0) >= 50:
+        signals.append("Proporsi tautan dan media cukup tinggi")
+    if normalized_metrics.get("interaction_behavior", 0) >= 50:
+        signals.append("Aktivitas interaksi terlihat intens")
+    if normalized_metrics.get("posting_interval_regularity", 0) >= 60:
+        signals.append("Pola waktu posting sangat teratur")
+    if normalized_metrics.get("profile_risk", 0) >= 50:
+        signals.append("Profil menunjukkan indikasi risiko")
+        
+    if len(signals) < 3:
+        sorted_metrics = sorted(
+            [(k, v) for k, v in normalized_metrics.items()],
+            key=lambda x: x[1],
+            reverse=True
+        )
+        metric_labels = {
+            "semantic_similarity": "Kemiripan pesan cukup tinggi",
+            "hashtag_density": "Pola penggunaan tagar terlihat padat",
+            "activity_intensity": "Aktivitas posting terlihat intens",
+            "media_url_ratio": "Proporsi tautan dan media cukup tinggi",
+            "interaction_behavior": "Aktivitas interaksi terlihat intens",
+            "posting_interval_regularity": "Pola waktu posting sangat teratur",
+            "profile_risk": "Profil menunjukkan indikasi risiko"
+        }
+        for k, v in sorted_metrics:
+            label = metric_labels.get(k)
+            if label and label not in signals:
+                signals.append(label)
+                if len(signals) >= 3:
+                    break
+                    
+    return signals[:3]
