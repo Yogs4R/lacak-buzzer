@@ -3,6 +3,7 @@ Endpoint API FastAPI untuk melayani permintaan analisis dari website dan bot X.
 """
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
+from urllib.parse import urlparse
 from schemas.analysis import AnalysisRequest, AnalysisResponse, AnalysisMetrics
 from services.scraper import scrape_tweets
 from services.feature_extraction import extract_features
@@ -22,15 +23,19 @@ router = APIRouter()
 def normalize_username(target: str) -> str:
     """Membersihkan dan menormalisasi URL/username target menjadi format username standar."""
     target = target.strip()
-    if "twitter.com/" in target or "x.com/" in target:
-        # Menghapus skema http/https jika ada
-        parts = target.split("/")
-        for i, part in enumerate(parts):
-            if "twitter.com" in part or "x.com" in part:
-                if i + 1 < len(parts):
-                    # Ambil bagian setelah domain, hilangkan query params (?s=21 dll)
-                    username = parts[i + 1].split("?")[0]
-                    return username.lstrip("@").strip()
+
+    # Parse URL secara aman (hindari substring check pada domain).
+    parsed = urlparse(target)
+    if not parsed.hostname and "://" not in target:
+        # Input bisa berupa "x.com/user" tanpa skema.
+        parsed = urlparse(f"https://{target}")
+
+    allowed_hosts = {"twitter.com", "www.twitter.com", "x.com", "www.x.com"}
+    if parsed.hostname and parsed.hostname.lower() in allowed_hosts:
+        path_parts = [p for p in parsed.path.split("/") if p]
+        if path_parts:
+            return path_parts[0].lstrip("@").strip()
+
     return target.lstrip("@").strip()
 
 
