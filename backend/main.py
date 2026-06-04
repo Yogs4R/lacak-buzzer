@@ -29,7 +29,18 @@ async def lifespan(app: FastAPI):
     init_twitter_db()
     yield
 
+from fastapi.middleware.cors import CORSMiddleware
+
 app = FastAPI(title="Lacak Buzzer API", lifespan=lifespan)
+
+# Konfigurasi CORS agar frontend di Cloudflare Pages dapat memanggil API di Hugging Face Spaces
+app.add_middleware(
+    CORSMiddleware,
+    allow_origins=["*"],
+    allow_credentials=True,
+    allow_methods=["*"],
+    allow_headers=["*"],
+)
 
 app.include_router(analyze_router, prefix="/api")
 
