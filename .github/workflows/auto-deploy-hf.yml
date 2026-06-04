@@ -19,6 +19,18 @@ jobs:
         env:
           HF_TOKEN: ${{ secrets.HF_TOKEN }}
         run: |
-          # Silakan ganti USERNAME dan SPACE_NAME dengan detail Space milik Anda di Hugging Face
-          git remote add hf https://Yogs4R:$HF_TOKEN@huggingface.co/spaces/Yogs4R/lacak-buzzer-backend
-          git subtree push --prefix=backend hf main --force
+          git config --global user.email "github-actions-bot@users.noreply.github.com"
+          git config --global user.name "GitHub Actions Bot"
+          
+          # Buat folder terpisah untuk inisialisasi git bersih
+          mkdir -p ../temp_deploy
+          cp -r backend/* ../temp_deploy/
+          cd ../temp_deploy
+          
+          git init
+          git checkout -b main
+          git add .
+          git commit -m "Deploy backend to Hugging Face Spaces"
+          
+          # Lakukan force push langsung ke main branch di Hugging Face Space
+          git push -f https://Yogs4R:$HF_TOKEN@huggingface.co/spaces/Yogs4R/lacak-buzzer-backend main:main

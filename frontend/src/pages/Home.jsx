@@ -2,8 +2,13 @@ import { useState, useRef, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import ResultCard from '../components/ResultCard';
 
+const getApiUrl = (path) => {
+  const base = import.meta.env.VITE_API_URL || '';
+  return `${base}${path}`;
+};
+
 const analyzeApi = async (target) => {
-  const response = await fetch('/api/analyze', {
+  const response = await fetch(getApiUrl('/api/analyze'), {
     method: 'POST',
     headers: {
       'Content-Type': 'application/json',
@@ -43,7 +48,7 @@ export default function Home() {
   useEffect(() => {
     const fetchStats = async () => {
       try {
-        const response = await fetch('/api/stats');
+        const response = await fetch(getApiUrl('/api/stats'));
         if (response.ok) {
           const data = await response.json();
           setScannedCount(data.total_scans);
