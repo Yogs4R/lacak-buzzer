@@ -107,14 +107,14 @@ lacak-buzzer/
 │   │   └── test_bot_mentions.py
 │   ├── data/
 │   │   └── .gitkeep
+│   ├── Dockerfile
 │   ├── main.py
 │   └── requirements.txt
 ├── AGENTS.md
 ├── README.md
 ├── .gitignore
 ├── .env.example
-├── Procfile
-└── railway.json
+└── Procfile
 ```
 
 ## Data Collection

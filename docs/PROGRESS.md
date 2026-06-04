@@ -82,6 +82,6 @@ Setiap tes unit ini diwajibkan oleh `AGENTS.md`.
 
 ## Fase 6: Deployment (Tahap Awal ✅🚧)
 - [x] `requirements.txt` dan *virtual environment* setup.
-- [x] `Procfile` & `railway.json` disiapkan untuk Railway (Backend API).
+- [x] `Dockerfile` disiapkan untuk Hugging Face Spaces (Backend API).
 - [x] Konfigurasi frontend untuk *Cloudflare Pages* disiapkan.
 - [ ] *Sanity Check* final di *production environment* dengan memori < 2GB.

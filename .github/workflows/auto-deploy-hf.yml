@@ -1,0 +1,24 @@
+name: Sync to Hugging Face Spaces
+
+on:
+  push:
+    branches: [main]
+  # Mengizinkan penjalanan manual dari tab Actions
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v4
+        with:
+          fetch-depth: 0
+
+      - name: Push to HF Spaces
+        env:
+          HF_TOKEN: ${{ secrets.HF_TOKEN }}
+        run: |
+          # Silakan ganti USERNAME dan SPACE_NAME dengan detail Space milik Anda di Hugging Face
+          git remote add hf https://Yogs4R:$HF_TOKEN@huggingface.co/spaces/Yogs4R/lacak-buzzer-backend
+          git subtree push --prefix=backend hf main --force

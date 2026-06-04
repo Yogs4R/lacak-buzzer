@@ -79,6 +79,7 @@ lacak-buzzer/
 │   │   ├── test_confidence.py        # Unit test kalkulasi kepercayaan
 │   │   ├── test_rate_limits.py       # Unit test rate limiter
 │   │   └── test_scoring.py           # Unit test algoritma scoring & reducers
+│   ├── Dockerfile                    # Konfigurasi container Hugging Face Spaces
 │   ├── main.py                       # Entry point ASGI FastAPI (Uvicorn)
 │   └── requirements.txt              # Daftar pustaka Python backend
 ├── docs/                             # Dokumen progres dan manajerial
@@ -90,8 +91,7 @@ lacak-buzzer/
 ├── README.md                         # Dokumentasi pusat repositori (berkas ini)
 ├── .env.example                      # Template variabel environment rahasia
 ├── .gitignore                        # Daftar file yang diabaikan Git
-├── Procfile                          # Konfigurasi perintah runner production
-└── railway.json                      # Konfigurasi Railway build & deploy
+└── Procfile                          # Konfigurasi perintah runner production
 ```
 
 ## Instalasi & Cara Menjalankan

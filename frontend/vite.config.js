@@ -11,5 +11,10 @@ export default defineConfig({
     allowedHosts: [
       'lacakbuzzer.web.id'
     ]
+  },
+  preview: {
+    proxy: {
+      '/api': 'http://localhost:8000'
+    }
   }
 })

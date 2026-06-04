@@ -18,13 +18,22 @@ def load_dotenv():
 
 load_dotenv()
 
+from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from api.analyze import router as analyze_router
+from services.init_db import init_twitter_db
 
-app = FastAPI(title="Lacak Buzzer API")
+@asynccontextmanager
+async def lifespan(app: FastAPI):
+    # Inisialisasi basis data Twitter scraper di runtime menggunakan secrets env
+    init_twitter_db()
+    yield
+
+app = FastAPI(title="Lacak Buzzer API", lifespan=lifespan)
 
 app.include_router(analyze_router, prefix="/api")
 
 @app.get("/")
 def root():
     return {"status": "ok", "message": "Lacak Buzzer API running"}
+
