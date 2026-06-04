@@ -33,10 +33,15 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Lacak Buzzer API", lifespan=lifespan)
 
-# Konfigurasi CORS agar frontend di Cloudflare Pages dapat memanggil API di Hugging Face Spaces
+# Konfigurasi CORS agar hanya domain frontend resmi yang dapat memanggil API di Hugging Face Spaces
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=[
+        "https://lacakbuzzer.web.id",
+        "https://lacak-buzzer.pages.dev",  # Ganti dengan subdomain .pages.dev Anda jika berbeda
+        "http://localhost:5173",          # Untuk testing lokal di browser
+        "http://localhost:4173"           # Untuk testing preview lokal
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
