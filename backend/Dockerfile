@@ -4,7 +4,8 @@ FROM python:3.12-slim
 ENV PYTHONUNBUFFERED=1 \
     PYTHONDONTWRITEBYTECODE=1 \
     PORT=7860 \
-    HOME=/home/user
+    HOME=/home/user \
+    TWS_DATA_DIR=/home/user/app/data
 
 # Create user and home directory
 RUN useradd -m -u 1000 user

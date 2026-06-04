@@ -15,8 +15,13 @@ def init_twitter_db():
         print(f"❌ Error parsing TWITTER_ACCOUNTS_JSON: {e}")
         return
         
-    db_path = "accounts.db"
+    tws_data_dir = os.getenv("TWS_DATA_DIR", "")
+    if tws_data_dir:
+        db_path = os.path.join(tws_data_dir, "accounts.db")
+    else:
+        db_path = "accounts.db"
     
+    conn = None
     try:
         conn = sqlite3.connect(db_path)
         c = conn.cursor()
@@ -80,4 +85,5 @@ def init_twitter_db():
     except Exception as e:
         print(f"❌ Error initializing Twitter accounts.db: {e}")
     finally:
-        conn.close()
+        if conn is not None:
+            conn.close()
