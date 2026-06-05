@@ -38,7 +38,7 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=[
         "https://lacakbuzzer.web.id",
-        "https://lacak-buzzer.pages.dev",  # Ganti dengan subdomain .pages.dev Anda jika berbeda
+        "https://lacakbuzzer.pages.dev",  # Ganti dengan subdomain .pages.dev Anda jika berbeda
         "http://localhost:5173",          # Untuk testing lokal di browser
         "http://localhost:4173"           # Untuk testing preview lokal
     ],
