@@ -7,6 +7,7 @@ import asyncio
 from bot.x_bot import (
     build_analysis_payload,
     call_analyze_api,
+    dry_run_mention,
     format_error_reply,
     format_success_reply,
     process_mention_text,
@@ -184,3 +185,103 @@ def test_call_analyze_api_returns_safe_error_on_network_failure():
         "error": "backend_unavailable",
         "message": "Maaf, analisis belum bisa diproses. Coba beberapa saat lagi.",
     }
+
+
+def test_dry_run_valid_mention_prints_reply_preview():
+    client = FakeClient(
+        FakeResponse(
+            {
+                "score": 74,
+                "risk_band": "Tinggi",
+                "metrics": {"semantic_similarity": 82},
+                "signals": [
+                    "Kemiripan pesan cukup tinggi",
+                    "Pola penggunaan tagar terlihat padat",
+                    "Aktivitas dan interaksi terlihat intens",
+                ],
+                "caveat": "Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.",
+            }
+        )
+    )
+
+    output = run_async(
+        dry_run_mention(
+            text="@LacakBuzzer cek @detikcom",
+            bot_username="LacakBuzzer",
+            requester_username="dandy63609",
+            mention_id="dryrun-001",
+            base_url="http://127.0.0.1:8000",
+            client=client,
+        )
+    )
+
+    assert "Target: detikcom" in output
+    assert '"source": "x_bot"' in output
+    assert "POST http://127.0.0.1:8000/api/analyze" in output
+    assert "Indikator Risiko Amplifikasi Terkoordinasi: Tinggi" in output
+    assert "bukti bahwa akun tersebut terkoordinasi" in output
+    assert "semantic_similarity" not in output
+
+
+def test_dry_run_invalid_mention_does_not_call_backend():
+    client = FakeClient()
+
+    output = run_async(
+        dry_run_mention(
+            text="@LacakBuzzer hello",
+            bot_username="LacakBuzzer",
+            requester_username="dandy63609",
+            mention_id="dryrun-001",
+            base_url="http://127.0.0.1:8000",
+            client=client,
+        )
+    )
+
+    assert "No valid target mention found. No reply would be sent." in output
+    assert client.calls == []
+
+
+def test_dry_run_requester_only_mention_does_not_call_backend():
+    client = FakeClient()
+
+    output = run_async(
+        dry_run_mention(
+            text="@LacakBuzzer cek @dandy63609",
+            bot_username="LacakBuzzer",
+            requester_username="dandy63609",
+            mention_id="dryrun-001",
+            base_url="http://127.0.0.1:8000",
+            client=client,
+        )
+    )
+
+    assert "No valid target mention found. No reply would be sent." in output
+    assert client.calls == []
+
+
+def test_dry_run_hides_unsafe_backend_error_details():
+    client = FakeClient(
+        FakeResponse(
+            {
+                "error": "scraper_login_problem",
+                "message": "Traceback C:\\Users\\PC\\.env auth token leaked",
+            },
+            status_code=400,
+        )
+    )
+
+    output = run_async(
+        dry_run_mention(
+            text="@LacakBuzzer cek @detikcom",
+            bot_username="LacakBuzzer",
+            requester_username="dandy63609",
+            mention_id="dryrun-001",
+            base_url="http://127.0.0.1:8000",
+            client=client,
+        )
+    )
+
+    assert "Maaf, analisis belum bisa diproses. Coba beberapa saat lagi." in output
+    assert "Traceback" not in output
+    assert ".env" not in output
+    assert "token" not in output
