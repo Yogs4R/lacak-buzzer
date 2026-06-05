@@ -4,6 +4,7 @@ import ResultCard from '../components/ResultCard';
 
 const getApiUrl = (path) => {
   const base = import.meta.env.VITE_API_URL || '';
+  console.log("DEBUG API URL:", base);
   return `${base}${path}`;
 };
 
