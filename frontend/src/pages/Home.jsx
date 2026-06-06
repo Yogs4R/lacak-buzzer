@@ -3,8 +3,8 @@ import SearchBar from '../components/SearchBar';
 import ResultCard from '../components/ResultCard';
 
 const getApiUrl = (path) => {
-  const base = import.meta.env.VITE_API_URL || '';
-  console.log("DEBUG API URL:", base);
+  // Matikan env sementara, paksa pakai string langsung
+  const base = "https://yogs4r-lacak-buzzer-backend.hf.space"; 
   return `${base}${path}`;
 };
 
