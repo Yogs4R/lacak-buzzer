@@ -6,12 +6,14 @@ export default function Header() {
     <header className="navbar">
       <div className="w-full max-w-[1200px] mx-auto flex items-center justify-between gap-2 sm:gap-4">
         {/* Left: Logo */}
-        <NavLink to="/" className="flex items-center">
-          <img src={logo} className="logo-3-1" alt="Lacak Buzzer" />
-        </NavLink>
+        <div className="flex-1 flex justify-start">
+          <NavLink to="/" className="flex items-center">
+            <img src={logo} className="logo-3-1" alt="Lacak Buzzer" />
+          </NavLink>
+        </div>
 
         {/* Middle: Navigation Links */}
-        <nav className="flex items-center gap-3 sm:gap-6">
+        <nav className="flex items-center justify-center gap-3 sm:gap-6">
           {['/', '/about', '/faq'].map((path) => {
             const label = path === '/' ? 'Home' : path === '/about' ? 'About' : 'FAQ';
             return (
@@ -31,24 +33,26 @@ export default function Header() {
         </nav>
 
         {/* Right: Try X Bot Try Button */}
-        <a
-          href="https://x.com/lacakbuzzer"
-          target="_blank"
-          rel="noopener noreferrer"
-          className="bg-ink text-[#000000] border border-ink hover:bg-[#000000] hover:text-ink hover:border-borderCustom rounded-btn px-2.5 sm:px-4 py-1.5 sm:py-2 font-main text-[13px] sm:text-[14px] font-semibold flex items-center gap-2 transition-all duration-200 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)]"
-        >
-          {/* X Logo SVG */}
-          <svg
-            width="12"
-            height="12"
-            viewBox="0 0 24 24"
-            fill="currentColor"
-            className="inline-block"
+        <div className="flex-1 flex justify-end">
+          <a
+            href="https://x.com/lacakbuzzer"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="bg-ink text-[#000000] border border-ink hover:bg-[#000000] hover:text-ink hover:border-borderCustom rounded-btn px-2.5 sm:px-4 py-1.5 sm:py-2 font-main text-[13px] sm:text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)]"
           >
-            <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
-          </svg>
-          <span className="hidden md:inline">Try X Bot</span>
-        </a>
+            {/* X Logo SVG */}
+            <svg
+              width="12"
+              height="12"
+              viewBox="0 0 24 24"
+              fill="currentColor"
+              className="inline-block"
+            >
+              <path d="M18.244 2.25h3.308l-7.227 8.26 8.502 11.24H16.17l-5.214-6.817L4.99 21.75H1.68l7.73-8.835L1.254 2.25H8.08l4.713 6.231zm-1.161 17.52h1.833L7.084 4.126H5.117z" />
+            </svg>
+            <span className="hidden md:inline">Try X Bot</span>
+          </a>
+        </div>
       </div>
     </header>
   );
