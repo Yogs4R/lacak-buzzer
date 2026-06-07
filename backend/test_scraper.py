@@ -1,8 +1,11 @@
+import os
 import asyncio
 from twscrape import API
 
 async def test_accounts():
-    api = API()
+    tws_data_dir = os.getenv("TWS_DATA_DIR", "")
+    db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
+    api = API(db_path)
     print("🔍 Mengambil daftar akun dari database...")
     accounts = await api.pool.get_all()
     

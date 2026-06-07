@@ -96,6 +96,9 @@ async def analyze_account(req: AnalysisRequest, request: Request):
     try:
         scraped_data = await scrape_tweets(target, limit=req.tweet_limit)
     except ValueError as e:
+        import traceback
+        print(f"ValueError during scrape_tweets: {e}")
+        traceback.print_exc()
         err_type = e.args[0] if e.args else ""
         if err_type == "account_not_found":
             return JSONResponse(
@@ -132,6 +135,9 @@ async def analyze_account(req: AnalysisRequest, request: Request):
                 }
             )
     except Exception as e:
+        import traceback
+        print(f"Exception during scrape_tweets: {e}")
+        traceback.print_exc()
         err_msg = str(e).lower()
         if "rate limit" in err_msg or "too many requests" in err_msg:
             return JSONResponse(
