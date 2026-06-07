@@ -3,8 +3,11 @@ import SearchBar from '../components/SearchBar';
 import ResultCard from '../components/ResultCard';
 
 const getApiUrl = (path) => {
-  // Matikan env sementara, paksa pakai string langsung
-  const base = "https://yogs4r-lacak-buzzer-backend.hf.space"; 
+  // Jika sedang didevelop secara lokal, gunakan path relatif agar proxy Vite bekerja.
+  // Jika di production, gunakan VITE_API_URL dari Cloudflare, atau fallback ke URL Space Hugging Face.
+  const base = import.meta.env.DEV
+    ? ''
+    : (import.meta.env.VITE_API_URL || "https://yogs4r-lacak-buzzer-backend.hf.space");
   return `${base}${path}`;
 };
 
