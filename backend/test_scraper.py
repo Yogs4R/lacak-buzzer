@@ -4,7 +4,7 @@ from twscrape import API
 async def test_accounts():
     api = API()
     print("🔍 Mengambil daftar akun dari database...")
-    accounts = await api.pool.accounts()
+    accounts = await api.pool.get_all()
     
     if not accounts:
         print("❌ Tidak ada akun yang terdaftar di database accounts.db!")
