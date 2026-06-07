@@ -6,19 +6,19 @@ export default function FAQ() {
   const faqData = [
     {
       q: 'Bagaimana cara kerja deteksi buzzer?',
-      a: 'Sistem kami menganalisis pola posting, interaksi, dan metadata akun menggunakan model machine learning untuk menghasilkan indikator risiko berbasis pola perilaku.',
+      a: 'Sistem kami menganalisis pola posting, interaksi, dan metadata akun menggunakan model machine learning Sentence Transformers MiniLM untuk menghasilkan indikator tingkat risiko berbasis pola perilaku.',
     },
     {
       q: 'Apakah data pengguna aman?',
       a: 'Kami hanya menganalisis data publik yang tersedia di platform X. Tidak ada data pribadi yang disimpan di server kami.',
     },
     {
-      q: 'Berapa akurasi sistem deteksi?',
-      a: 'Model kami mencapai akurasi 98.4% berdasarkan benchmark internal dengan dataset berlabel manual.',
+      q: 'Bagaimana keandalan indikator risiko ini?',
+      a: 'Indikator ini dihitung secara deterministik menggunakan rumus bobot tetap yang melacak metrik perilaku akun (seperti kemiripan semantik pesan, kepadatan tagar, intensitas postingan, dan pola interval waktu). Hasilnya berupa indikator tingkat risiko perilaku, bukan vonis mutlak.',
     },
     {
-      q: 'Apakah ada batas penggunaan gratis?',
-      a: 'Paket gratis memberikan 5 analisis per IP per hari. Untuk kebutuhan lebih besar, tersedia paket Pro dan Enterprise.',
+      q: 'Apakah ada batas penggunaan?',
+      a: 'Untuk versi MVP ini, setiap alamat IP dibatasi maksimal 5 kali analisis sukses per hari demi menjaga stabilitas server. Semua layanan ini gratis tanpa memerlukan registrasi.',
     },
     {
       q: 'Apa itu Indikator Risiko Amplifikasi Terkoordinasi?',

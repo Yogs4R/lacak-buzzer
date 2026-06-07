@@ -1,6 +1,30 @@
+import { useState, useEffect } from 'react';
 import { CaveatBlock } from '../components/Footer';
 
+const getApiUrl = (path) => {
+  const base = import.meta.env.DEV
+    ? ''
+    : (import.meta.env.VITE_API_URL || "https://yogs4r-lacak-buzzer-backend.hf.space");
+  return `${base}${path}`;
+};
+
 export default function About() {
+  const [scannedCount, setScannedCount] = useState(0);
+
+  useEffect(() => {
+    const fetchStats = async () => {
+      try {
+        const response = await fetch(getApiUrl('/api/stats'));
+        if (response.ok) {
+          const data = await response.json();
+          setScannedCount(data.total_scans);
+        }
+      } catch (e) {
+        console.error('Gagal mengambil statistik global', e);
+      }
+    };
+    fetchStats();
+  }, []);
   return (
     <div className="page-wrapper animate-fade-in-up">
       {/* Section 1 — Intro */}
@@ -64,23 +88,25 @@ export default function About() {
         <div className="flex flex-col gap-4">
           {/* Card 1 */}
           <div className="card p-6">
-            <span className="gradient-text text-[28px] font-bold">500K+</span>
+            <span className="gradient-text text-[28px] font-bold">
+              {scannedCount.toLocaleString('id-ID')}
+            </span>
             <p className="text-[13px] font-semibold text-mutedText mt-1 uppercase tracking-wider">
               Analisis Selesai
             </p>
           </div>
           {/* Card 2 */}
           <div className="card p-6">
-            <span className="gradient-text text-[28px] font-bold">99.1%</span>
+            <span className="gradient-text text-[28px] font-bold">0 - 100</span>
             <p className="text-[13px] font-semibold text-mutedText mt-1 uppercase tracking-wider">
-              Uptime Platform
+              Skala Indikator
             </p>
           </div>
           {/* Card 3 */}
           <div className="card p-6">
-            <span className="gradient-text text-[28px] font-bold">&lt; 3s</span>
+            <span className="gradient-text text-[28px] font-bold">~15s</span>
             <p className="text-[13px] font-semibold text-mutedText mt-1 uppercase tracking-wider">
-              Rata-rata Waktu Respons
+              Rata-rata Waktu Analisis
             </p>
           </div>
         </div>
