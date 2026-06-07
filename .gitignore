@@ -36,10 +36,14 @@ share/python-wheels/
 MANIFEST
 
 # twscrape
-backend/accounts.txt
-backend/accounts.db
-backend/inject.py
-backend/inject_2.py
+accounts.txt
+accounts.db
+inject.py
+inject_2.py
+**/accounts.txt
+**/accounts.db
+**/inject.py
+**/inject_2.py
 
 # Vite/Frontend
 frontend/node_modules/
