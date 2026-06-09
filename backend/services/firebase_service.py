@@ -19,8 +19,25 @@ def get_db():
     if _initialized:
         return _db
 
+    # Coba inisialisasi menggunakan environment variable (berguna di platform awan seperti Hugging Face Spaces)
+    firebase_creds_env = os.environ.get("FIREBASE_CREDENTIALS")
+    if firebase_creds_env:
+        try:
+            import json
+            creds_dict = json.loads(firebase_creds_env)
+            if not firebase_admin._apps:
+                cred = credentials.Certificate(creds_dict)
+                firebase_admin.initialize_app(cred)
+            _db = firestore.client()
+            print("✅ Firebase Admin SDK initialized successfully from environment variable!")
+            _initialized = True
+            return _db
+        except Exception as e:
+            print(f"❌ Error initializing Firebase from environment variable: {e}")
+
+    # Jika environment variable tidak ada, gunakan file kredensial lokal
     if not os.path.exists(KEY_PATH):
-        print(f"⚠️ Firebase credentials file not found at: {KEY_PATH}. Running in offline/no-database mode.")
+        print("⚠️ Firebase credentials file not found. Running in offline/no-database mode.")
         _initialized = True
         return None
 
@@ -30,9 +47,9 @@ def get_db():
             cred = credentials.Certificate(KEY_PATH)
             firebase_admin.initialize_app(cred)
         _db = firestore.client()
-        print("✅ Firebase Admin SDK initialized successfully!")
+        print("✅ Firebase Admin SDK initialized successfully from file!")
     except Exception as e:
-        print(f"❌ Error initializing Firebase: {e}")
+        print(f"❌ Error initializing Firebase from file: {e}")
         _db = None
 
     _initialized = True

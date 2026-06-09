@@ -42,7 +42,7 @@ const analyzeApi = async (target) => {
 function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
   return (
     <div className="card border border-borderCustom p-5 flex flex-col min-h-[260px]">
-      <p className="eyebrow mb-4">{title}</p>
+      <h3 className="text-[12px] font-bold text-ink uppercase tracking-wider mb-4">{title}</h3>
       {items ? (
         <div className="flex flex-col gap-2.5 text-[13px] flex-1">
           {items.length > 0 ? (
@@ -354,7 +354,7 @@ export default function Home() {
               
               {/* Box 1: Total Pemindaian */}
               <div className="card border border-borderCustom p-5 flex flex-col min-h-[260px]">
-                <p className="eyebrow mb-4">Total Pemindaian</p>
+                <h3 className="text-[12px] font-bold text-ink uppercase tracking-wider mb-4">Total Pemindaian</h3>
                 {globalStats ? (
                   <div className="flex flex-col gap-3 font-mono text-[13px] flex-1">
                     <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
@@ -369,7 +369,7 @@ export default function Home() {
                       <span className="text-mutedText">Sedang:</span>
                       <span className="text-[#eab308] font-semibold">{(globalStats.breakdown?.Sedang || 0).toLocaleString('id-ID')}</span>
                     </div>
-                    <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
+                    <div className="flex justify-between pb-1.5">
                       <span className="text-mutedText">Rendah:</span>
                       <span className="text-[#22c55e] font-semibold">{(globalStats.breakdown?.Rendah || 0).toLocaleString('id-ID')}</span>
                     </div>

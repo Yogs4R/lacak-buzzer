@@ -69,8 +69,6 @@ lacak-buzzer/
 │   ├── data/                         # Folder internal data (e.g. rate limit JSON)
 │   ├── schemas/
 │   │   └── analysis.py               # Schema validasi pydantic (Model Data)
-│   ├── secrets/
-│   │   └── firebase-key.json         # Kredensial service account Firebase Firestore (diabaikan Git)
 │   ├── services/
 │   │   ├── explanation.py            # Generator penjelasan via OpenRouter LLM
 │   │   ├── feature_extraction.py     # Logika metrik hashtag, dll (NLP/Math)
