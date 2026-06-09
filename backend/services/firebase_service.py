@@ -147,11 +147,13 @@ def get_recent_scans(limit: int = 5) -> list:
     if db is None:
         return []
     try:
+        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
         docs = db.collection("scan_history")\
             .order_by("created_at", direction=firestore.Query.DESCENDING)\
-            .limit(limit)\
+            .limit(limit * 4)\
             .stream()
-        return _format_scan_list(docs)
+        scans = _format_scan_list(docs)
+        return scans[:limit]
     except Exception as e:
         print(f"❌ Gagal mengambil scans terbaru dari Firestore: {e}")
         return []
@@ -163,11 +165,13 @@ def get_safest_accounts(limit: int = 5) -> list:
     if db is None:
         return []
     try:
+        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
         docs = db.collection("scan_history")\
             .order_by("score", direction=firestore.Query.ASCENDING)\
-            .limit(limit)\
+            .limit(limit * 4)\
             .stream()
-        return _format_scan_list(docs)
+        scans = _format_scan_list(docs)
+        return scans[:limit]
     except Exception as e:
         print(f"❌ Gagal mengambil akun teraman dari Firestore: {e}")
         return []
@@ -179,11 +183,13 @@ def get_riskiest_accounts(limit: int = 5) -> list:
     if db is None:
         return []
     try:
+        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
         docs = db.collection("scan_history")\
             .order_by("score", direction=firestore.Query.DESCENDING)\
-            .limit(limit)\
+            .limit(limit * 4)\
             .stream()
-        return _format_scan_list(docs)
+        scans = _format_scan_list(docs)
+        return scans[:limit]
     except Exception as e:
         print(f"❌ Gagal mengambil akun berisiko dari Firestore: {e}")
         return []
@@ -197,13 +203,25 @@ def get_scan_report(username: str) -> dict:
     try:
         docs = db.collection("scan_history")\
             .where("username_lower", "==", username.lower())\
-            .order_by("created_at", direction=firestore.Query.DESCENDING)\
-            .limit(1)\
             .stream()
 
+        matching_docs = []
         for doc in docs:
-            return doc.to_dict().get("full_report")
-        return None
+            matching_docs.append(doc.to_dict())
+
+        if not matching_docs:
+            return None
+
+        # Urutkan secara manual berdasarkan created_at descending di memori Python
+        # untuk menghindari keharusan membuat indeks komposit di Firestore.
+        def get_time(doc_dict):
+            t = doc_dict.get("created_at")
+            if t is None:
+                return ""
+            return str(t)
+
+        matching_docs.sort(key=get_time, reverse=True)
+        return matching_docs[0].get("full_report")
     except Exception as e:
         print(f"❌ Gagal mengambil laporan pemindaian untuk @{username}: {e}")
         return None
@@ -214,6 +232,10 @@ def _format_scan_list(docs) -> list:
     scans = []
     for doc in docs:
         d = doc.to_dict()
+        username = d.get("username")
+        # Abaikan data dummy test run
+        if not username or username.lower() == "target_user":
+            continue
         created_at = d.get("created_at")
         if created_at:
             try:
@@ -221,7 +243,7 @@ def _format_scan_list(docs) -> list:
             except Exception:
                 created_at = str(created_at)
         scans.append({
-            "username": d.get("username"),
+            "username": username,
             "score": d.get("score"),
             "risk_label": d.get("risk_label"),
             "created_at": created_at

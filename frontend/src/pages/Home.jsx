@@ -50,7 +50,7 @@ function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
               <div key={idx} className="flex justify-between items-center border-b border-borderCustom/30 pb-1.5 last:border-0 last:pb-0">
                 <button
                   onClick={() => onFetchHistory(item.username)}
-                  className="bg-transparent border-none text-left font-mono font-semibold text-ink hover:text-gradEnd cursor-pointer p-0 truncate max-w-[125px]"
+                  className="bg-transparent border-none text-left font-mono font-semibold text-[#f97316] hover:text-[#e03a1e] cursor-pointer p-0 truncate max-w-[125px]"
                   title={`Lihat detail @${item.username}`}
                 >
                   @{item.username}

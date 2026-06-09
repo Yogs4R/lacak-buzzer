@@ -138,7 +138,7 @@ def test_get_recent_scans():
         
         res = firebase_service.get_recent_scans(5)
         mock_col.order_by.assert_called_once_with("created_at", direction=firestore.Query.DESCENDING)
-        mock_query_1.limit.assert_called_once_with(5)
+        mock_query_1.limit.assert_called_once_with(20)
         assert len(res) == 1
         assert res[0]["username"] == "user1"
 
@@ -165,7 +165,7 @@ def test_get_safest_accounts():
         
         res = firebase_service.get_safest_accounts(5)
         mock_col.order_by.assert_called_once_with("score", direction=firestore.Query.ASCENDING)
-        mock_query_1.limit.assert_called_once_with(5)
+        mock_query_1.limit.assert_called_once_with(20)
         assert len(res) == 1
         assert res[0]["username"] == "safest1"
 
@@ -192,7 +192,7 @@ def test_get_riskiest_accounts():
         
         res = firebase_service.get_riskiest_accounts(5)
         mock_col.order_by.assert_called_once_with("score", direction=firestore.Query.DESCENDING)
-        mock_query_1.limit.assert_called_once_with(5)
+        mock_query_1.limit.assert_called_once_with(20)
         assert len(res) == 1
         assert res[0]["username"] == "risky1"
 
@@ -202,22 +202,19 @@ def test_get_scan_report():
     with patch("services.firebase_service.get_db", return_value=mock_db):
         mock_col = MagicMock()
         mock_query_1 = MagicMock()
-        mock_query_2 = MagicMock()
-        mock_query_3 = MagicMock()
         
         mock_db.collection.return_value = mock_col
         mock_col.where.return_value = mock_query_1
-        mock_query_1.order_by.return_value = mock_query_2
-        mock_query_2.limit.return_value = mock_query_3
         
         doc1 = MagicMock()
         report = {"score": 50, "target": "TestUser"}
         doc1.to_dict.return_value = {
             "username": "TestUser",
             "username_lower": "testuser",
-            "full_report": report
+            "full_report": report,
+            "created_at": "2026-06-09T00:00:00Z"
         }
-        mock_query_3.stream.return_value = [doc1]
+        mock_query_1.stream.return_value = [doc1]
         
         res = firebase_service.get_scan_report("tEsTuSeR")
         mock_col.where.assert_called_once_with("username_lower", "==", "testuser")
