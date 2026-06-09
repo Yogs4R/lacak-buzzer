@@ -3,6 +3,7 @@
 ![License](https://img.shields.io/github/license/Yogs4R/lacak-buzzer?style=for-the-badge&color=e03a1e)
 ![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
 ![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
+![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase&logoColor=FFCA28)
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
 
@@ -60,23 +61,28 @@ lacak-buzzer/
 │   └── wrangler.toml                 # Konfigurasi Cloudflare Pages
 ├── backend/                          # Backend API & Bot (FastAPI)
 │   ├── api/
-│   │   └── analyze.py                # Endpoint `/analyze` FastAPI
+│   │   ├── analyze.py                # Endpoint `/analyze` FastAPI
+│   │   └── leaderboard.py            # Endpoint stats, leaderboard, & detail history
 │   ├── bot/
 │   │   ├── mention_parser.py         # Ekstraktor username dari teks tweet bot
 │   │   └── x_bot.py                  # Proses monitoring dan membalas tweet (Bot X)
 │   ├── data/                         # Folder internal data (e.g. rate limit JSON)
 │   ├── schemas/
 │   │   └── analysis.py               # Schema validasi pydantic (Model Data)
+│   ├── secrets/
+│   │   └── firebase-key.json         # Kredensial service account Firebase Firestore (diabaikan Git)
 │   ├── services/
 │   │   ├── explanation.py            # Generator penjelasan via OpenRouter LLM
 │   │   ├── feature_extraction.py     # Logika metrik hashtag, dll (NLP/Math)
+│   │   ├── firebase_service.py       # Integrasi database Firestore & global stats
 │   │   ├── rate_limits.py            # Pengecekan limit akses harian
 │   │   ├── scoring.py                # Implementasi formula penilaian baku
 │   │   └── scraper.py                # Wrapper twscrape untuk mengambil tweets
 │   ├── tests/
-│   │   ├── test_analyze_api.py       # Unit test endpoint analyze
+│   │   ├── test_analyze_api.py       # Unit test endpoint analyze dan leaderboard
 │   │   ├── test_bot_mentions.py      # Unit test parser mention bot
 │   │   ├── test_confidence.py        # Unit test kalkulasi kepercayaan
+│   │   ├── test_firebase_service.py  # Unit test integrasi Firebase Firestore
 │   │   ├── test_rate_limits.py       # Unit test rate limiter
 │   │   └── test_scoring.py           # Unit test algoritma scoring & reducers
 │   ├── Dockerfile                    # Konfigurasi container Hugging Face Spaces

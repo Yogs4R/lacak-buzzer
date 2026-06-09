@@ -37,41 +37,166 @@ const analyzeApi = async (target) => {
   return await response.json();
 };
 
+// Sub-komponen reusable untuk merender kolom leaderboard
+// Dibuat terpisah untuk menghindari duplikasi kode dan menekan cognitive complexity (Fallow warning).
+function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
+  return (
+    <div className="card border border-borderCustom p-5 flex flex-col min-h-[260px]">
+      <p className="eyebrow mb-4">{title}</p>
+      {items ? (
+        <div className="flex flex-col gap-2.5 text-[13px] flex-1">
+          {items.length > 0 ? (
+            items.map((item, idx) => (
+              <div key={idx} className="flex justify-between items-center border-b border-borderCustom/30 pb-1.5 last:border-0 last:pb-0">
+                <button
+                  onClick={() => onFetchHistory(item.username)}
+                  className="bg-transparent border-none text-left font-mono font-semibold text-ink hover:text-gradEnd cursor-pointer p-0 truncate max-w-[125px]"
+                  title={`Lihat detail @${item.username}`}
+                >
+                  @{item.username}
+                </button>
+                <span className={`font-semibold font-mono text-[11px] px-1.5 py-0.5 rounded ${getBadgeStyle(item.risk_label)}`}>
+                  {item.score}
+                </span>
+              </div>
+            ))
+          ) : (
+            <p className="text-xs text-mutedText">Belum ada data.</p>
+          )}
+        </div>
+      ) : (
+        <p className="text-xs text-mutedText">Memuat data...</p>
+      )}
+    </div>
+  );
+}
+
+function HeroSection({ scannedCount }) {
+  return (
+    <section className="hero-centered animate-fade-in-up">
+      <p className="eyebrow">
+        ANALISIS INTELIJEN SOSIAL
+      </p>
+      <h1 className="hero-headline text-center mt-4 max-w-[800px]">
+        Indikator Risiko Amplifikasi Terkoordinasi
+      </h1>
+      <p className="mt-5 max-w-[600px] text-[18px] text-bodyText leading-relaxed text-center">
+        Analisis pola perilaku akun X/Twitter secara singkat dan ramah, dengan fokus pada indikator risiko berbasis perilaku.
+      </p>
+
+      {/* Centered Stats Row */}
+      <div className="stat-row mt-8 justify-center">
+        <div className="stat-item px-6">
+          <p className="stat-number">0 - 100</p>
+          <p className="stat-label">Skala Indikator</p>
+        </div>
+        <div className="stat-item px-6 border-l border-r border-borderCustom">
+          <p className="stat-number">15.0s</p>
+          <p className="stat-label">Waktu Analisis</p>
+        </div>
+        <div className="stat-item px-6">
+          <p className="stat-number">{scannedCount.toLocaleString('id-ID')}</p>
+          <p className="stat-label">Akun Dipindai</p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
+function AnalysisSection({ isLoading, handleAnalyze }) {
+  const [activeTab, setActiveTab] = useState('Username');
+
+  return (
+    <section className="animate-fade-in-up delay-100 max-w-[650px] w-full mx-auto mb-12">
+      <div className="card shadow-[0_20px_50px_rgba(0,0,0,0.45)] p-8">
+        <p className="eyebrow mb-4">
+          ANALISIS TARGET
+        </p>
+
+        {/* Tab Bar */}
+        <div className="bg-canvas rounded-lg p-1 flex gap-1 mb-5">
+          {['Username', 'URL Tweet', 'Bulk'].map((tab) => {
+            const isUsername = tab === 'Username';
+            const isActive = activeTab === tab;
+            return (
+              <button
+                key={tab}
+                disabled={!isUsername}
+                onClick={() => isUsername && setActiveTab(tab)}
+                className={`flex-1 border-none rounded-btn py-2 px-4 font-semibold text-[13px] transition-all duration-200 ${
+                  isActive
+                    ? 'bg-brand-gradient text-ink'
+                    : isUsername
+                    ? 'bg-transparent text-mutedText hover:text-ink cursor-pointer'
+                    : 'bg-transparent text-placeholderText cursor-not-allowed'
+                }`}
+              >
+                {tab}
+                {!isUsername && (
+                  <span className="text-[9px] bg-borderCustom px-1.5 py-0.5 rounded text-mutedText font-normal ml-1">
+                    Soon
+                  </span>
+                )}
+              </button>
+            );
+          })}
+        </div>
+
+        {/* Input Row and Search */}
+        <div className="bg-canvas rounded-lg border border-borderCustom p-4">
+          <SearchBar loading={isLoading} onSubmit={handleAnalyze} />
+        </div>
+
+        {/* Info Message */}
+        <div className="mt-4 bg-canvas rounded-lg border border-borderCustom p-4">
+          <p className="text-sm leading-relaxed text-bodyText">
+            {activeTab === 'Username' &&
+              'Masukkan username target tanpa simbol @ untuk menganalisis risiko perilaku profil.'}
+            {activeTab === 'URL Tweet' &&
+              'Masukkan URL tweet lengkap untuk menganalisis interaksi dan penyebaran semantik tweet tersebut.'}
+            {activeTab === 'Bulk' &&
+              'Masukkan beberapa username yang dipisahkan oleh tanda koma untuk menganalisis secara massal.'}
+          </p>
+        </div>
+      </div>
+    </section>
+  );
+}
+
 export default function Home() {
   const [isLoading, setIsLoading] = useState(false);
   const [statusText, setStatusText] = useState('');
   const [resultData, setResultData] = useState(null);
   const [errorText, setErrorText] = useState('');
-  const [activeTab, setActiveTab] = useState('Username');
   const [scannedCount, setScannedCount] = useState(0);
-  const [recentScans, setRecentScans] = useState([]);
+
+  const [globalStats, setGlobalStats] = useState(null);
+  const [leaderboard, setLeaderboard] = useState(null);
 
   const resultsRef = useRef(null);
 
-  // Fetch global stats and check cached analysis on mount
-  useEffect(() => {
-    const fetchStats = async () => {
-      try {
-        const response = await fetch(getApiUrl('/api/stats'));
-        if (response.ok) {
-          const data = await response.json();
-          setScannedCount(data.total_scans);
-        }
-      } catch (e) {
-        console.error('Gagal mengambil statistik global', e);
-      }
-    };
-    fetchStats();
-
-    // Load recent scans from localStorage
+  const fetchStatsAndLeaderboard = async () => {
     try {
-      const saved = localStorage.getItem('recentScans');
-      if (saved) {
-        setRecentScans(JSON.parse(saved));
+      const statsRes = await fetch(getApiUrl('/api/stats'));
+      if (statsRes.ok) {
+        const statsData = await statsRes.json();
+        setGlobalStats(statsData);
+        setScannedCount(statsData.total_scans);
+      }
+      
+      const lbRes = await fetch(getApiUrl('/api/leaderboard'));
+      if (lbRes.ok) {
+        const lbData = await lbRes.json();
+        setLeaderboard(lbData);
       }
     } catch (e) {
-      console.error('Gagal memuat riwayat pencarian', e);
+      console.error('Gagal mengambil data statistik/leaderboard', e);
     }
+  };
+
+  // Fetch global stats and leaderboard on mount
+  useEffect(() => {
+    fetchStatsAndLeaderboard();
 
     // Load last analysis result from sessionStorage
     const cachedResult = sessionStorage.getItem('lastAnalysisResult');
@@ -83,29 +208,6 @@ export default function Home() {
       }
     }
   }, []);
-
-  const addToRecentScans = (username, score, riskBand, fullData) => {
-    let list = [];
-    try {
-      const saved = localStorage.getItem('recentScans');
-      list = saved ? JSON.parse(saved) : [];
-    } catch (e) {
-      list = [];
-    }
-    list = list.filter((item) => item.username.toLowerCase() !== username.toLowerCase());
-    list.unshift({ username, score, risk_band: riskBand, data: fullData });
-    list = list.slice(0, 5);
-    localStorage.setItem('recentScans', JSON.stringify(list));
-    setRecentScans(list);
-  };
-
-  const handleSelectRecentScan = (item) => {
-    setResultData(item.data);
-    sessionStorage.setItem('lastAnalysisResult', JSON.stringify(item.data));
-    setTimeout(() => {
-      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
-    }, 100);
-  };
 
   const handleAnalyze = async (target) => {
     setIsLoading(true);
@@ -122,11 +224,45 @@ export default function Home() {
       const data = await analyzeApi(target);
       setResultData(data);
       sessionStorage.setItem('lastAnalysisResult', JSON.stringify(data));
-      addToRecentScans(data.target, data.score, data.risk_band, data);
-      // Increment global scanned count locally upon successful analysis
-      setScannedCount((prev) => prev + 1);
+      // Refresh stats & leaderboard to reflect the new scan
+      fetchStatsAndLeaderboard();
     } catch (err) {
       setErrorText(err.message || 'Terjadi kesalahan saat menganalisis.');
+      setTimeout(() => {
+        resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      }, 100);
+    } finally {
+      setIsLoading(false);
+      setStatusText('');
+    }
+  };
+
+  const handleFetchHistory = async (username) => {
+    setIsLoading(true);
+    setResultData(null);
+    setErrorText('');
+    setStatusText(`Memuat riwayat pemindaian @${username}...`);
+
+    setTimeout(() => {
+      resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    }, 100);
+
+    try {
+      const response = await fetch(getApiUrl(`/api/history/${username}`));
+      if (!response.ok) {
+        let errData;
+        try {
+          errData = await response.json();
+        } catch (e) {
+          throw new Error('Terjadi kesalahan koneksi ke server.');
+        }
+        throw new Error(errData.detail || 'Riwayat tidak ditemukan.');
+      }
+      const data = await response.json();
+      setResultData(data);
+      sessionStorage.setItem('lastAnalysisResult', JSON.stringify(data));
+    } catch (err) {
+      setErrorText(err.message || 'Gagal memuat riwayat.');
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
       }, 100);
@@ -151,9 +287,17 @@ export default function Home() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   };
 
-  const handleClearRecentScans = () => {
-    localStorage.removeItem('recentScans');
-    setRecentScans([]);
+  const getBadgeStyle = (riskLabel) => {
+    if (riskLabel === 'Rendah') {
+      return 'bg-green-500/10 text-green-400 border border-green-500/20';
+    }
+    if (riskLabel === 'Sedang') {
+      return 'bg-yellow-500/10 text-yellow-400 border border-yellow-500/20';
+    }
+    if (riskLabel === 'Tinggi') {
+      return 'bg-orange-500/10 text-orange-400 border border-orange-500/20';
+    }
+    return 'bg-red-500/10 text-red-400 border border-red-500/20'; // Ekstrem
   };
 
   return (
@@ -161,150 +305,10 @@ export default function Home() {
       <main className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-16 pt-8 sm:px-6 lg:px-8">
         
         {/* Centered Hero Section */}
-        <section className="hero-centered animate-fade-in-up">
-          <p className="eyebrow">
-            ANALISIS INTELIJEN SOSIAL
-          </p>
-          <h1 className="hero-headline text-center mt-4 max-w-[800px]">
-            Indikator Risiko Amplifikasi Terkoordinasi
-          </h1>
-          <p className="mt-5 max-w-[600px] text-[18px] text-bodyText leading-relaxed text-center">
-            Analisis pola perilaku akun X/Twitter secara singkat dan ramah, dengan fokus pada indikator risiko berbasis perilaku.
-          </p>
-
-          {/* Centered Stats Row */}
-          <div className="stat-row mt-8 justify-center">
-            <div className="stat-item px-6">
-              <p className="stat-number">0 - 100</p>
-              <p className="stat-label">Skala Indikator</p>
-            </div>
-            <div className="stat-item px-6 border-l border-r border-borderCustom">
-              <p className="stat-number">15.0s</p>
-              <p className="stat-label">Waktu Analisis</p>
-            </div>
-            <div className="stat-item px-6">
-              <p className="stat-number">{scannedCount.toLocaleString('id-ID')}</p>
-              <p className="stat-label">Akun Dipindai</p>
-            </div>
-          </div>
-        </section>
+        <HeroSection scannedCount={scannedCount} />
 
         {/* Centered Analysis Card */}
-        <section className="animate-fade-in-up delay-100 max-w-[650px] w-full mx-auto mb-12">
-          <div className="card shadow-[0_20px_50px_rgba(0,0,0,0.45)] p-8">
-            <p className="eyebrow mb-4">
-              ANALISIS TARGET
-            </p>
-
-            {/* Tab Bar */}
-            <div className="bg-canvas rounded-lg p-1 flex gap-1 mb-5">
-              {['Username', 'URL Tweet', 'Bulk'].map((tab) => {
-                const isUsername = tab === 'Username';
-                const isActive = activeTab === tab;
-                return (
-                  <button
-                    key={tab}
-                    disabled={!isUsername}
-                    onClick={() => isUsername && setActiveTab(tab)}
-                    className={`flex-1 border-none rounded-btn py-2 px-4 font-semibold text-[13px] transition-all duration-200 ${
-                      isActive
-                        ? 'bg-brand-gradient text-ink'
-                        : isUsername
-                        ? 'bg-transparent text-mutedText hover:text-ink cursor-pointer'
-                        : 'bg-transparent text-placeholderText cursor-not-allowed'
-                    }`}
-                  >
-                    {tab}
-                    {!isUsername && (
-                      <span className="text-[9px] bg-borderCustom px-1.5 py-0.5 rounded text-mutedText font-normal ml-1">
-                        Soon
-                      </span>
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-
-            {/* Input Row and Search */}
-            <div className="bg-canvas rounded-lg border border-borderCustom p-4">
-              <SearchBar loading={isLoading} onSubmit={handleAnalyze} />
-            </div>
-
-            {/* Info Message */}
-            <div className="mt-4 bg-canvas rounded-lg border border-borderCustom p-4">
-              <p className="text-sm leading-relaxed text-bodyText">
-                {activeTab === 'Username' &&
-                  'Masukkan username target tanpa simbol @ untuk menganalisis risiko perilaku profil.'}
-                {activeTab === 'URL Tweet' &&
-                  'Masukkan URL tweet lengkap untuk menganalisis interaksi dan penyebaran semantik tweet tersebut.'}
-                {activeTab === 'Bulk' &&
-                  'Masukkan beberapa username yang dipisahkan oleh tanda koma untuk menganalisis secara massal.'}
-              </p>
-            </div>
-          </div>
-        </section>
-
-        {/* Recent Scans Section */}
-        {!resultData && !isLoading && recentScans.length > 0 && (
-          <section className="animate-fade-in-up delay-150 max-w-[650px] w-full mx-auto mt-6 mb-12">
-            <div className="card border border-borderCustom p-6">
-              <div className="flex justify-between items-center mb-4">
-                <p className="eyebrow m-0">Pencarian Terbaru (Device Ini)</p>
-                <button
-                  onClick={handleClearRecentScans}
-                  className="text-[11px] text-mutedText hover:text-red-400 bg-transparent border-none cursor-pointer font-main font-semibold transition-colors duration-200"
-                >
-                  Hapus Riwayat
-                </button>
-              </div>
-              <div className="flex flex-col gap-2.5">
-                {recentScans.map((item, idx) => (
-                  <button
-                    key={idx}
-                    onClick={() => handleSelectRecentScan(item)}
-                    className="flex justify-between items-center bg-canvas hover:bg-surface border border-borderCustom hover:border-gradEnd rounded-btn p-3 text-left transition-colors duration-200 cursor-pointer w-full text-ink"
-                  >
-                    <span className="font-mono text-ink">@{item.username}</span>
-                    <div className="flex items-center gap-3">
-                      <span className="text-[13px] text-mutedText">Score: {item.score}</span>
-                      <span
-                        className="text-[12px] font-bold px-2 py-0.5 rounded"
-                        style={{
-                          backgroundColor:
-                            item.risk_band === 'Rendah'
-                              ? 'rgba(34, 197, 94, 0.1)'
-                              : item.risk_band === 'Sedang'
-                              ? 'rgba(234, 179, 8, 0.1)'
-                              : item.risk_band === 'Tinggi'
-                              ? 'rgba(249, 115, 22, 0.1)'
-                              : 'rgba(239, 68, 68, 0.1)',
-                          color:
-                            item.risk_band === 'Rendah'
-                              ? '#22c55e'
-                              : item.risk_band === 'Sedang'
-                              ? '#eab308'
-                              : item.risk_band === 'Tinggi'
-                              ? '#f97316'
-                              : '#ef4444',
-                          border:
-                            item.risk_band === 'Rendah'
-                              ? '1px solid rgba(34, 197, 94, 0.2)'
-                              : item.risk_band === 'Sedang'
-                              ? '1px solid rgba(234, 179, 8, 0.2)'
-                              : item.risk_band === 'Tinggi'
-                              ? '1px solid rgba(249, 115, 22, 0.2)'
-                              : '1px solid rgba(239, 68, 68, 0.2)',
-                        }}
-                      >
-                        {item.risk_band}
-                      </span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-            </div>
-          </section>
-        )}
+        <AnalysisSection isLoading={isLoading} handleAnalyze={handleAnalyze} />
 
         {/* Results / Loader section */}
         <div ref={resultsRef} className="w-full max-w-[900px] mx-auto">
@@ -337,11 +341,75 @@ export default function Home() {
           )}
 
           {resultData && !isLoading && (
-            <div className="animate-fade-in-up">
+            <div className="animate-fade-in-up animate-fade-in">
               <ResultCard data={resultData} onReset={handleReset} />
             </div>
           )}
         </div>
+
+        {/* 4 Boxes Section (Stats & Leaderboard) */}
+        {!isLoading && (
+          <section className="animate-fade-in-up delay-150 w-full max-w-[900px] mx-auto mt-12 mb-16">
+            <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-4 gap-6">
+              
+              {/* Box 1: Total Pemindaian */}
+              <div className="card border border-borderCustom p-5 flex flex-col min-h-[260px]">
+                <p className="eyebrow mb-4">Total Pemindaian</p>
+                {globalStats ? (
+                  <div className="flex flex-col gap-3 font-mono text-[13px] flex-1">
+                    <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
+                      <span className="text-mutedText">Ekstrem:</span>
+                      <span className="text-[#ef4444] font-semibold">{(globalStats.breakdown?.Ekstrem || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
+                      <span className="text-mutedText">Tinggi:</span>
+                      <span className="text-[#f97316] font-semibold">{(globalStats.breakdown?.Tinggi || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
+                      <span className="text-mutedText">Sedang:</span>
+                      <span className="text-[#eab308] font-semibold">{(globalStats.breakdown?.Sedang || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between border-b border-borderCustom/50 pb-1.5">
+                      <span className="text-mutedText">Rendah:</span>
+                      <span className="text-[#22c55e] font-semibold">{(globalStats.breakdown?.Rendah || 0).toLocaleString('id-ID')}</span>
+                    </div>
+                    <div className="flex justify-between pt-1 font-sans text-[13px] font-bold mt-auto border-t border-borderCustom">
+                      <span>Total:</span>
+                      <span className="gradient-text">{globalStats.total_scans?.toLocaleString('id-ID')}</span>
+                    </div>
+                  </div>
+                ) : (
+                  <p className="text-xs text-mutedText">Memuat statistik...</p>
+                )}
+              </div>
+
+              {/* Box 2: Radar Terkini */}
+              <LeaderboardBox
+                title="Radar Terkini"
+                items={leaderboard?.recent_scans}
+                onFetchHistory={handleFetchHistory}
+                getBadgeStyle={getBadgeStyle}
+              />
+
+              {/* Box 3: Akun Teraman */}
+              <LeaderboardBox
+                title="Akun Teraman"
+                items={leaderboard?.safest_accounts}
+                onFetchHistory={handleFetchHistory}
+                getBadgeStyle={getBadgeStyle}
+              />
+
+              {/* Box 4: Risiko Tertinggi */}
+              <LeaderboardBox
+                title="Risiko Tertinggi"
+                items={leaderboard?.riskiest_accounts}
+                onFetchHistory={handleFetchHistory}
+                getBadgeStyle={getBadgeStyle}
+              />
+
+            </div>
+          </section>
+        )}
 
       </main>
     </div>

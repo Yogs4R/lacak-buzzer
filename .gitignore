@@ -9,6 +9,7 @@ venv.bak/
 
 # Rate limits & data
 backend/data/*.json
+backend/secrets/*.json
 !backend/data/.gitkeep
 
 # Python
@@ -67,3 +68,5 @@ _bmad/config.user.toml
 # Pytest
 .pytest_cache/
 
+# Fallow Extension Cache
+.fallow/

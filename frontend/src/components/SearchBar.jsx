@@ -1,5 +1,39 @@
 import { useState } from 'react'
 
+const parseXUrl = (urlStr) => {
+  try {
+    const url = new URL(urlStr)
+    const host = url.hostname.replace(/^www\./i, '').toLowerCase()
+
+    if (!['x.com', 'twitter.com'].includes(host)) {
+      return {
+        valid: false,
+        error: 'Format URL X/Twitter tidak valid',
+      }
+    }
+
+    const segments = url.pathname.split('/').filter(Boolean)
+    const username = segments[0]
+
+    if (!username || !/^[A-Za-z0-9_]{1,15}$/.test(username)) {
+      return {
+        valid: false,
+        error: 'Format URL X/Twitter tidak valid',
+      }
+    }
+
+    return {
+      valid: true,
+      normalized: username,
+    }
+  } catch {
+    return {
+      valid: false,
+      error: 'Format URL X/Twitter tidak valid',
+    }
+  }
+}
+
 export default function SearchBar({ onSubmit, loading = false }) {
   const [value, setValue] = useState('')
   const [error, setError] = useState('')
@@ -16,44 +50,12 @@ export default function SearchBar({ onSubmit, loading = false }) {
 
     let candidate = input.replace(/^@/, '').trim()
 
-    if (!/^https?:\/\//i.test(candidate)) {
-      if (/^(www\.)?(x|twitter)\.com\//i.test(candidate)) {
-        candidate = `https://${candidate}`
-      }
+    if (!/^https?:\/\//i.test(candidate) && /^(www\.)?(x|twitter)\.com\//i.test(candidate)) {
+      candidate = `https://${candidate}`
     }
 
     if (/^https?:\/\//i.test(candidate)) {
-      try {
-        const url = new URL(candidate)
-        const host = url.hostname.replace(/^www\./i, '').toLowerCase()
-
-        if (!['x.com', 'twitter.com'].includes(host)) {
-          return {
-            valid: false,
-            error: 'Format URL X/Twitter tidak valid',
-          }
-        }
-
-        const segments = url.pathname.split('/').filter(Boolean)
-        const username = segments[0]
-
-        if (!username || !/^[A-Za-z0-9_]{1,15}$/.test(username)) {
-          return {
-            valid: false,
-            error: 'Format URL X/Twitter tidak valid',
-          }
-        }
-
-        return {
-          valid: true,
-          normalized: username,
-        }
-      } catch {
-        return {
-          valid: false,
-          error: 'Format URL X/Twitter tidak valid',
-        }
-      }
+      return parseXUrl(candidate)
     }
 
     if (/^[A-Za-z0-9_]{1,15}$/.test(candidate)) {

@@ -1,7 +1,9 @@
 import os
 import asyncio
+import pytest
 from twscrape import API
 
+@pytest.mark.skip(reason="Manual integration test")
 async def test_accounts():
     tws_data_dir = os.getenv("TWS_DATA_DIR", "")
     db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"

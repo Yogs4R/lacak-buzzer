@@ -39,12 +39,6 @@ def normalize_username(target: str) -> str:
     return target.lstrip("@").strip()
 
 
-@router.get("/stats")
-def get_stats():
-    """Mengembalikan total global pindaian akun."""
-    from services.rate_limits import get_global_scan_count
-    return {"total_scans": get_global_scan_count()}
-
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_account(req: AnalysisRequest, request: Request):
@@ -181,6 +175,29 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         metrics=normalized_metrics,
         signals=signals,
     )
+
+    # Simpan riwayat pemindaian ke Firebase Firestore
+    try:
+        from services.firebase_service import save_scan_history
+        full_report = {
+            "target": target,
+            "score": score,
+            "risk_band": risk_band,
+            "confidence": confidence,
+            "tweet_count": tweet_count,
+            "metrics": normalized_metrics,
+            "signals": signals,
+            "explanation": explanation,
+            "caveat": "Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu."
+        }
+        save_scan_history(
+            username=target,
+            score=score,
+            risk_label=risk_band,
+            full_report=full_report
+        )
+    except Exception as e:
+        print(f"⚠️ Gagal menyimpan riwayat pemindaian ke Firestore: {e}")
 
     # 9. Peningkatan counter rate limit jika sukses
     increment_rate_limit(

@@ -21,12 +21,21 @@ load_dotenv()
 from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from api.analyze import router as analyze_router
+from api.leaderboard import router as leaderboard_router
 from services.init_db import init_twitter_db
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     # Inisialisasi basis data Twitter scraper di runtime menggunakan secrets env
     init_twitter_db()
+    
+    # Inisialisasi Firebase Firestore saat startup
+    try:
+        from services.firebase_service import get_db
+        get_db()
+    except Exception as e:
+        print(f"⚠️ Gagal menginisialisasi Firebase saat startup: {e}")
+        
     yield
 
 from fastapi.middleware.cors import CORSMiddleware
@@ -48,6 +57,7 @@ app.add_middleware(
 )
 
 app.include_router(analyze_router, prefix="/api")
+app.include_router(leaderboard_router, prefix="/api")
 
 @app.get("/")
 def root():

@@ -78,6 +78,18 @@ function MetricBar({ label, value }) {
   );
 }
 
+function getLabelAlignment(x, y, cx, cy) {
+  let textAnchor = 'middle';
+  if (x < cx - 10) textAnchor = 'end';
+  else if (x > cx + 10) textAnchor = 'start';
+
+  let dy = '0.35em';
+  if (y < cy - 10) dy = '-0.2em';
+  else if (y > cy + 10) dy = '0.9em';
+
+  return { textAnchor, dy };
+}
+
 function RadarChart({ metrics }) {
   const cx = 150;
   const cy = 150;
@@ -178,13 +190,7 @@ function RadarChart({ metrics }) {
         {/* Text labels */}
         {keys.map((key, i) => {
           const { x, y } = getCoordinates(i, 1.18);
-          let textAnchor = 'middle';
-          if (x < cx - 10) textAnchor = 'end';
-          else if (x > cx + 10) textAnchor = 'start';
-
-          let dy = '0.35em';
-          if (y < cy - 10) dy = '-0.2em';
-          else if (y > cy + 10) dy = '0.9em';
+          const { textAnchor, dy } = getLabelAlignment(x, y, cx, cy);
 
           return (
             <text

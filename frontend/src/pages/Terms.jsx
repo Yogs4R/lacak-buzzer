@@ -1,11 +1,8 @@
+import LegalPageLayout from '../components/LegalPageLayout';
+
 export default function Terms() {
   return (
-    <div className="animate-fade-in-up py-24 px-4 max-w-[800px] mx-auto w-full font-main text-bodyText leading-relaxed">
-      <p className="eyebrow text-center">LEGAL</p>
-      <h1 className="text-[40px] font-bold text-ink mt-4 text-center mb-10 leading-tight">
-        Syarat & Ketentuan
-      </h1>
-
+    <LegalPageLayout title="Syarat & Ketentuan">
       <section className="mb-8">
         <h2 className="text-[20px] font-semibold text-ink mb-3">
           1. Penerimaan Ketentuan
@@ -58,12 +55,7 @@ export default function Terms() {
           Kami berhak untuk mengubah, menangguhkan, atau menghentikan aspek apa pun dari layanan kami sewaktu-waktu tanpa pemberitahuan sebelumnya, termasuk membatasi akses demi menjaga stabilitas infrastruktur server.
         </p>
       </section>
-
-      <hr className="border-borderCustom my-10" />
-
-      <p className="text-[12px] text-mutedText text-center">
-        Terakhir diperbarui: Juni 2026
-      </p>
-    </div>
+    </LegalPageLayout>
   );
 }
+

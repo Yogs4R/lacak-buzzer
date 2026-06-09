@@ -38,6 +38,7 @@ export default function Header() {
             href="https://x.com/lacakbuzzer"
             target="_blank"
             rel="noopener noreferrer"
+            aria-label="Coba Bot X Lacak Buzzer"
             className="bg-ink text-[#000000] border border-ink hover:bg-[#000000] hover:text-ink hover:border-borderCustom rounded-btn px-2.5 sm:px-4 py-1.5 sm:py-2 font-main text-[13px] sm:text-[14px] font-semibold flex items-center justify-center gap-2 transition-all duration-200 hover:shadow-[0_0_12px_rgba(255,255,255,0.15)]"
           >
             {/* X Logo SVG */}
