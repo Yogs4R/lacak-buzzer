@@ -219,3 +219,52 @@ def test_get_scan_report():
         res = firebase_service.get_scan_report("tEsTuSeR")
         mock_col.where.assert_called_once_with("username_lower", "==", "testuser")
         assert res == report
+
+
+def test_firebase_caching():
+    """test_firebase_caching memverifikasi cache in-memory untuk global_stats dan leaderboard."""
+    # Reset cache secara manual sebelum pengujian
+    firebase_service.clear_firebase_cache()
+    
+    with patch("services.firebase_service.get_db", return_value=mock_db):
+        mock_metadata_col = MagicMock()
+        mock_global_stats_doc = MagicMock()
+        mock_metadata_col.document.return_value = mock_global_stats_doc
+        
+        def collection_side_effect(name):
+            if name == "metadata":
+                return mock_metadata_col
+            return MagicMock()
+            
+        mock_db.collection.side_effect = collection_side_effect
+        
+        # Mock global_stats document get()
+        mock_stats_snapshot = MagicMock()
+        mock_stats_snapshot.exists = True
+        mock_stats_snapshot.to_dict.return_value = {
+            "total_scans": 15,
+            "breakdown": {
+                "Rendah": 10,
+                "Sedang": 5,
+                "Tinggi": 0,
+                "Ekstrem": 0
+            }
+        }
+        mock_global_stats_doc.get.return_value = mock_stats_snapshot
+        
+        # Panggilan pertama: harus mengambil dari Firestore (mock_global_stats_doc.get terpanggil)
+        stats1 = firebase_service.get_global_stats()
+        assert stats1["total_scans"] == 15
+        assert mock_global_stats_doc.get.call_count == 1
+        
+        # Panggilan kedua: harus mengambil dari cache (call_count tetap 1)
+        stats2 = firebase_service.get_global_stats()
+        assert stats2["total_scans"] == 15
+        assert mock_global_stats_doc.get.call_count == 1
+        
+        # Bersihkan cache secara manual dan panggil lagi: harus mengambil dari Firestore (call_count jadi 2)
+        firebase_service.clear_firebase_cache()
+        stats3 = firebase_service.get_global_stats()
+        assert stats3["total_scans"] == 15
+        assert mock_global_stats_doc.get.call_count == 2
+

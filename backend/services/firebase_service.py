@@ -2,6 +2,7 @@
 Service untuk interaksi dengan Firebase Firestore (Riwayat Pemindaian, Statistik Global, dan Leaderboard).
 """
 import os
+import time
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -11,6 +12,26 @@ KEY_PATH = os.path.join(SECRETS_DIR, "firebase-key.json")
 
 _db = None
 _initialized = False
+
+# Cache in-memory untuk menghemat reads di Firestore
+CACHE_TTL = 300  # 5 menit dalam detik
+_cache = {
+    "global_stats": None,        # { "data": dict, "expires_at": float }
+    "recent_scans": {},          # limit -> { "data": list, "expires_at": float }
+    "safest_accounts": {},       # limit -> { "data": list, "expires_at": float }
+    "riskiest_accounts": {},     # limit -> { "data": list, "expires_at": float }
+}
+
+
+def clear_firebase_cache():
+    """Mengosongkan cache in-memory Firebase."""
+    global _cache
+    _cache["global_stats"] = None
+    _cache["recent_scans"] = {}
+    _cache["safest_accounts"] = {}
+    _cache["riskiest_accounts"] = {}
+    print("🧹 In-memory Firebase cache cleared (invalidated).")
+
 
 
 def get_db():
@@ -96,12 +117,23 @@ def save_scan_history(username: str, score: int, risk_label: str, full_report: d
             f"breakdown.{risk_label}": firestore.Increment(1)
         })
         print(f"✅ Statistik global (total_scans dan breakdown.{risk_label}) diperbarui secara atomik.")
+        
+        # Bersihkan cache in-memory karena ada data baru ditulis
+        clear_firebase_cache()
     except Exception as e:
         print(f"❌ Gagal menyimpan data ke Firestore: {e}")
 
 
 def get_global_stats() -> dict:
     """Mengambil data statistik global dari Firestore."""
+    global _cache
+    now = time.time()
+    if _cache["global_stats"] is not None:
+        cache_entry = _cache["global_stats"]
+        if now < cache_entry["expires_at"]:
+            print("⚡ Returning cached global stats.")
+            return cache_entry["data"]
+
     default_stats = {
         "total_scans": 0,
         "breakdown": {
@@ -130,10 +162,15 @@ def get_global_stats() -> dict:
         stats_doc = stats_ref.get()
         if stats_doc.exists:
             data = stats_doc.to_dict()
-            return {
+            res = {
                 "total_scans": data.get("total_scans", 0),
                 "breakdown": data.get("breakdown", default_stats["breakdown"])
             }
+            _cache["global_stats"] = {
+                "data": res,
+                "expires_at": now + CACHE_TTL
+            }
+            return res
         else:
             return default_stats
     except Exception as e:
@@ -143,6 +180,14 @@ def get_global_stats() -> dict:
 
 def get_recent_scans(limit: int = 5) -> list:
     """Mengambil riwayat pemindaian akun terbaru."""
+    global _cache
+    now = time.time()
+    if limit in _cache["recent_scans"]:
+        cache_entry = _cache["recent_scans"][limit]
+        if now < cache_entry["expires_at"]:
+            print(f"⚡ Returning cached recent scans (limit={limit}).")
+            return cache_entry["data"]
+
     db = get_db()
     if db is None:
         return []
@@ -153,7 +198,12 @@ def get_recent_scans(limit: int = 5) -> list:
             .limit(limit * 4)\
             .stream()
         scans = _format_scan_list(docs)
-        return scans[:limit]
+        res = scans[:limit]
+        _cache["recent_scans"][limit] = {
+            "data": res,
+            "expires_at": now + CACHE_TTL
+        }
+        return res
     except Exception as e:
         print(f"❌ Gagal mengambil scans terbaru dari Firestore: {e}")
         return []
@@ -161,6 +211,14 @@ def get_recent_scans(limit: int = 5) -> list:
 
 def get_safest_accounts(limit: int = 5) -> list:
     """Mengambil riwayat pemindaian akun dengan skor terendah (teraman)."""
+    global _cache
+    now = time.time()
+    if limit in _cache["safest_accounts"]:
+        cache_entry = _cache["safest_accounts"][limit]
+        if now < cache_entry["expires_at"]:
+            print(f"⚡ Returning cached safest accounts (limit={limit}).")
+            return cache_entry["data"]
+
     db = get_db()
     if db is None:
         return []
@@ -171,7 +229,12 @@ def get_safest_accounts(limit: int = 5) -> list:
             .limit(limit * 4)\
             .stream()
         scans = _format_scan_list(docs)
-        return scans[:limit]
+        res = scans[:limit]
+        _cache["safest_accounts"][limit] = {
+            "data": res,
+            "expires_at": now + CACHE_TTL
+        }
+        return res
     except Exception as e:
         print(f"❌ Gagal mengambil akun teraman dari Firestore: {e}")
         return []
@@ -179,6 +242,14 @@ def get_safest_accounts(limit: int = 5) -> list:
 
 def get_riskiest_accounts(limit: int = 5) -> list:
     """Mengambil riwayat pemindaian akun dengan skor tertinggi (paling indikatif)."""
+    global _cache
+    now = time.time()
+    if limit in _cache["riskiest_accounts"]:
+        cache_entry = _cache["riskiest_accounts"][limit]
+        if now < cache_entry["expires_at"]:
+            print(f"⚡ Returning cached riskiest accounts (limit={limit}).")
+            return cache_entry["data"]
+
     db = get_db()
     if db is None:
         return []
@@ -189,7 +260,12 @@ def get_riskiest_accounts(limit: int = 5) -> list:
             .limit(limit * 4)\
             .stream()
         scans = _format_scan_list(docs)
-        return scans[:limit]
+        res = scans[:limit]
+        _cache["riskiest_accounts"][limit] = {
+            "data": res,
+            "expires_at": now + CACHE_TTL
+        }
+        return res
     except Exception as e:
         print(f"❌ Gagal mengambil akun berisiko dari Firestore: {e}")
         return []

@@ -175,19 +175,39 @@ export default function Home() {
 
   const resultsRef = useRef(null);
 
-  const fetchStatsAndLeaderboard = async () => {
+  const fetchStatsAndLeaderboard = async (forceRefresh = false) => {
+    if (!forceRefresh) {
+      const cachedStats = sessionStorage.getItem('globalStats');
+      const cachedLeaderboard = sessionStorage.getItem('leaderboard');
+      if (cachedStats && cachedLeaderboard) {
+        try {
+          const stats = JSON.parse(cachedStats);
+          const lb = JSON.parse(cachedLeaderboard);
+          setGlobalStats(stats);
+          setScannedCount(stats.total_scans);
+          setLeaderboard(lb);
+          return;
+        } catch (e) {
+          sessionStorage.removeItem('globalStats');
+          sessionStorage.removeItem('leaderboard');
+        }
+      }
+    }
+
     try {
       const statsRes = await fetch(getApiUrl('/api/stats'));
       if (statsRes.ok) {
         const statsData = await statsRes.json();
         setGlobalStats(statsData);
         setScannedCount(statsData.total_scans);
+        sessionStorage.setItem('globalStats', JSON.stringify(statsData));
       }
       
       const lbRes = await fetch(getApiUrl('/api/leaderboard'));
       if (lbRes.ok) {
         const lbData = await lbRes.json();
         setLeaderboard(lbData);
+        sessionStorage.setItem('leaderboard', JSON.stringify(lbData));
       }
     } catch (e) {
       console.error('Gagal mengambil data statistik/leaderboard', e);
@@ -196,7 +216,7 @@ export default function Home() {
 
   // Fetch global stats and leaderboard on mount
   useEffect(() => {
-    fetchStatsAndLeaderboard();
+    fetchStatsAndLeaderboard(false);
 
     // Load last analysis result from sessionStorage
     const cachedResult = sessionStorage.getItem('lastAnalysisResult');
@@ -224,8 +244,8 @@ export default function Home() {
       const data = await analyzeApi(target);
       setResultData(data);
       sessionStorage.setItem('lastAnalysisResult', JSON.stringify(data));
-      // Refresh stats & leaderboard to reflect the new scan
-      fetchStatsAndLeaderboard();
+      // Refresh stats & leaderboard to reflect the new scan (force refresh)
+      fetchStatsAndLeaderboard(true);
     } catch (err) {
       setErrorText(err.message || 'Terjadi kesalahan saat menganalisis.');
       setTimeout(() => {
