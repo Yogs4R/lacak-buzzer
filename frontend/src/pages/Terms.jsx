@@ -1,6 +1,22 @@
 import LegalPageLayout from '../components/LegalPageLayout';
+import { useSEO } from '../hooks/useSEO';
 
 export default function Terms() {
+  useSEO({
+    canonical: 'https://lacakbuzzer.web.id/terms',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'TermsOfService',
+      name: 'Syarat & Ketentuan Lacak Buzzer',
+      url: 'https://lacakbuzzer.web.id/terms',
+      inLanguage: 'id',
+      publisher: {
+        '@type': 'Organization',
+        name: 'Lacak Buzzer',
+        url: 'https://lacakbuzzer.web.id',
+      },
+    },
+  });
   return (
     <LegalPageLayout title="Syarat & Ketentuan">
       <section className="mb-8">

@@ -1,6 +1,7 @@
 import { useState, useRef, useEffect } from 'react';
 import SearchBar from '../components/SearchBar';
 import ResultCard from '../components/ResultCard';
+import { useSEO } from '../hooks/useSEO';
 
 const getApiUrl = (path) => {
   // Jika sedang didevelop secara lokal, gunakan path relatif agar proxy Vite bekerja.
@@ -174,6 +175,26 @@ export default function Home() {
   const [leaderboard, setLeaderboard] = useState(null);
 
   const resultsRef = useRef(null);
+
+  useSEO({
+    canonical: 'https://lacakbuzzer.web.id/',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'SoftwareApplication',
+      name: 'Lacak Buzzer',
+      url: 'https://lacakbuzzer.web.id',
+      applicationCategory: 'UtilitiesApplication',
+      operatingSystem: 'Any',
+      inLanguage: 'id',
+      description:
+        'Analisis pola perilaku akun X/Twitter dan hasilkan Indikator Risiko Amplifikasi Terkoordinasi (skor 0\u2013100). Gratis, tanpa registrasi.',
+      offers: {
+        '@type': 'Offer',
+        price: '0',
+        priceCurrency: 'IDR',
+      },
+    },
+  });
 
   const fetchStatsAndLeaderboard = async (forceRefresh = false) => {
     if (!forceRefresh) {

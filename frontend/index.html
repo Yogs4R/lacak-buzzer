@@ -12,17 +12,64 @@
     <meta name="keywords" content="analisis akun twitter, bot twitter, deteksi buzzer, analisis perilaku twitter, alat intelijen sumber terbuka, lacak buzzer">
     <meta name="author" content="Lacak Buzzer">
     <meta name="theme-color" content="#ffffff">
+    <meta name="robots" content="index, follow">
+    <meta name="language" content="Indonesian">
+    <link rel="canonical" href="https://lacakbuzzer.web.id/">
+    <link rel="alternate" hreflang="id" href="https://lacakbuzzer.web.id/">
 
-    <!-- Google Search SEO Site Name Structured Data -->
+    <!-- Structured Data: WebSite + WebApplication (GEO & SEO) -->
     <script type="application/ld+json">
-    {
-      "@context": "https://schema.org",
-      "@type": "WebSite",
-      "name": "Lacak Buzzer",
-      "alternateName": "Lacak Buzzer",
-      "url": "https://lacakbuzzer.web.id"
-    }
+    [
+      {
+        "@context": "https://schema.org",
+        "@type": "WebSite",
+        "name": "Lacak Buzzer",
+        "alternateName": "Lacak Buzzer - Analisis Akun X/Twitter",
+        "url": "https://lacakbuzzer.web.id",
+        "description": "Alat analisis indikator risiko amplifikasi terkoordinasi berbasis pola perilaku akun X/Twitter.",
+        "inLanguage": "id",
+        "potentialAction": {
+          "@type": "SearchAction",
+          "target": {
+            "@type": "EntryPoint",
+            "urlTemplate": "https://lacakbuzzer.web.id/?q={search_term_string}"
+          },
+          "query-input": "required name=search_term_string"
+        }
+      },
+      {
+        "@context": "https://schema.org",
+        "@type": "WebApplication",
+        "name": "Lacak Buzzer",
+        "url": "https://lacakbuzzer.web.id",
+        "description": "Menghasilkan Indikator Risiko Amplifikasi Terkoordinasi (skor 0\u2013100) dari pola perilaku akun X/Twitter. Bukan klaim fakta atau vonis.",
+        "applicationCategory": "UtilitiesApplication",
+        "operatingSystem": "Any",
+        "browserRequirements": "Requires JavaScript",
+        "inLanguage": "id",
+        "offers": {
+          "@type": "Offer",
+          "price": "0",
+          "priceCurrency": "IDR"
+        },
+        "featureList": [
+          "Analisis semantik tweet menggunakan MiniLM",
+          "Skor risiko 0\u2013100 berbasis 7 metrik perilaku",
+          "Penjelasan hasil dalam Bahasa Indonesia",
+          "Stateless \u2014 tidak menyimpan data pengguna",
+          "Gratis tanpa registrasi"
+        ],
+        "creator": {
+          "@type": "Organization",
+          "name": "Lacak Buzzer",
+          "url": "https://lacakbuzzer.web.id"
+        }
+      }
+    ]
     </script>
+
+    <!-- GEO: llms.txt autodiscovery untuk AI crawlers -->
+    <link rel="alternate" type="text/plain" title="LLMs.txt" href="/llms.txt">
 
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
@@ -37,6 +84,8 @@
     <meta property="og:title" content="Lacak Buzzer - Analisis Akun X/Twitter">
     <meta property="og:description" content="Alat untuk menganalisis indikator risiko amplifikasi terkoordinasi pada akun X/Twitter.">
     <meta property="og:image" content="https://lacakbuzzer.web.id/og-image.png">
+    <meta property="og:locale" content="id_ID">
+    <meta property="og:site_name" content="Lacak Buzzer">
 
     <!-- X (Twitter) -->
     <meta property="twitter:card" content="summary_large_image">
@@ -45,37 +94,36 @@
     <meta property="twitter:description" content="Alat untuk menganalisis indikator risiko amplifikasi terkoordinasi pada akun X/Twitter.">
     <meta property="twitter:image" content="https://lacakbuzzer.web.id/og-image.png">
 
-  </head>
+    <!-- Google Tag Manager — Consent default HARUS dipanggil sebelum gtag.js di-load -->
+    <script>
+      window.dataLayer = window.dataLayer || [];
+      function gtag(){dataLayer.push(arguments);}
+      try {
+        const consent = localStorage.getItem('cookieConsent');
+        gtag('consent', 'default', {
+          'analytics_storage': consent === 'accepted' ? 'granted' : 'denied',
+          'ad_storage': consent === 'accepted' ? 'granted' : 'denied',
+          'personalization_storage': consent === 'accepted' ? 'granted' : 'denied',
+          'functionality_storage': 'granted',
+          'security_storage': 'granted'
+        });
+      } catch (e) {
+        gtag('consent', 'default', {
+          'analytics_storage': 'denied',
+          'ad_storage': 'denied',
+          'personalization_storage': 'denied',
+          'functionality_storage': 'granted',
+          'security_storage': 'granted'
+        });
+      }
+    </script>
+    <script async src="https://www.googletagmanager.com/gtag/js?id=G-WR37292QLG"></script>
+    <script>
+      gtag('js', new Date());
+      gtag('config', 'G-WR37292QLG');
+    </script>
 
-  <!-- Google tag (gtag.js) -->
-  <script>
-    window.dataLayer = window.dataLayer || [];
-    function gtag(){dataLayer.push(arguments);}
-    
-    try {
-      const consent = localStorage.getItem('cookieConsent');
-      gtag('consent', 'default', {
-        'analytics_storage': consent === 'accepted' ? 'granted' : 'denied',
-        'ad_storage': consent === 'accepted' ? 'granted' : 'denied',
-        'personalization_storage': consent === 'accepted' ? 'granted' : 'denied',
-        'functionality_storage': 'granted',
-        'security_storage': 'granted'
-      });
-    } catch (e) {
-      gtag('consent', 'default', {
-        'analytics_storage': 'denied',
-        'ad_storage': 'denied',
-        'personalization_storage': 'denied',
-        'functionality_storage': 'granted',
-        'security_storage': 'granted'
-      });
-    }
-  </script>
-  <script async src="https://www.googletagmanager.com/gtag/js?id=G-WR37292QLG"></script>
-  <script>
-    gtag('js', new Date());
-    gtag('config', 'G-WR37292QLG');
-  </script>
+  </head>
 
   <body>
     <div id="root"></div>

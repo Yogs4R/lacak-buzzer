@@ -1,0 +1,48 @@
+# Lacak Buzzer
+
+> Alat analisis indikator risiko amplifikasi terkoordinasi berbasis pola perilaku akun X/Twitter. Dibuat untuk jurnalis, peneliti, dan organisasi.
+
+Lacak Buzzer menghasilkan "Indikator Risiko Amplifikasi Terkoordinasi" — skor 0–100 untuk akun X/Twitter berdasarkan pola perilaku yang dapat diamati secara publik. Bukan klaim fakta, bukan vonis.
+
+## Cara Kerja
+
+- Menganalisis 100 tweet terbaru dari akun target
+- Menggunakan model semantik lokal: sentence-transformers/all-MiniLM-L6-v2
+- Skor dihitung dari 7 metrik perilaku:
+  1. Kemiripan semantik antar tweet (bobot 30%)
+  2. Kepadatan penggunaan tagar (bobot 20%)
+  3. Intensitas aktivitas posting (bobot 15%)
+  4. Rasio media dan URL (bobot 10%)
+  5. Perilaku interaksi — mention & reply (bobot 10%)
+  6. Risiko profil — usia akun & bio (bobot 10%)
+  7. Regularitas interval posting / entropi (bobot 5%)
+
+## Band Risiko
+
+- Skor 0–35: Rendah
+- Skor 36–65: Sedang
+- Skor 66–85: Tinggi
+- Skor 86–100: Ekstrem
+
+## Prinsip Penting
+
+Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu. Sistem tidak menyimpan tweet, profil, atau hasil analisis (stateless).
+
+## Halaman
+
+- Beranda & analisis: https://lacakbuzzer.web.id/
+- Tentang kami: https://lacakbuzzer.web.id/about
+- FAQ: https://lacakbuzzer.web.id/faq
+- Kebijakan Privasi: https://lacakbuzzer.web.id/privacy
+- Syarat & Ketentuan: https://lacakbuzzer.web.id/terms
+
+## Teknologi
+
+- Backend: Python, FastAPI, twscrape, sentence-transformers
+- Frontend: React (Vite), Cloudflare Pages
+- Penjelasan: LLM via OpenRouter (hanya menerima metrik, bukan teks tweet mentah)
+
+## Batasan Penggunaan
+
+- 5 analisis per IP per hari (website)
+- Gratis, tanpa registrasi

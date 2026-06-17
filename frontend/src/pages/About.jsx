@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { CaveatBlock } from '../components/Footer';
+import { useSEO } from '../hooks/useSEO';
 
 const getApiUrl = (path) => {
   const base = import.meta.env.DEV
@@ -10,6 +11,25 @@ const getApiUrl = (path) => {
 
 export default function About() {
   const [scannedCount, setScannedCount] = useState(0);
+
+  useSEO({
+    canonical: 'https://lacakbuzzer.web.id/about',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'AboutPage',
+      name: 'Tentang Lacak Buzzer',
+      url: 'https://lacakbuzzer.web.id/about',
+      description:
+        'Platform Indikator Risiko Amplifikasi Terkoordinasi — alat bantu berbasis AI untuk jurnalis, peneliti, dan organisasi yang ingin memahami pola amplifikasi di platform X.',
+      mainEntity: {
+        '@type': 'Organization',
+        name: 'Lacak Buzzer',
+        url: 'https://lacakbuzzer.web.id',
+        description:
+          'Lacak Buzzer menggunakan kecerdasan buatan untuk menganalisis pola perilaku akun di X. Sistem kami tidak menuduh — hanya menyajikan indikator risiko berbasis pola perilaku.',
+      },
+    },
+  });
 
   useEffect(() => {
     const fetchStats = async () => {

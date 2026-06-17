@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { useSEO } from '../hooks/useSEO';
 
 function FAQItem({ item, isOpen, onToggle }) {
   return (
@@ -65,6 +66,22 @@ export default function FAQ() {
       a: 'Ini adalah skor 0–100 yang menunjukkan potensi risiko berdasarkan pola perilaku akun, bukan bukti bahwa akun tersebut melakukan koordinasi. Skor tinggi berarti pola perilakunya mirip dengan akun yang terkoordinasi, bukan berarti terbukti bersalah.',
     },
   ];
+
+  useSEO({
+    canonical: 'https://lacakbuzzer.web.id/faq',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'FAQPage',
+      mainEntity: faqData.map((item) => ({
+        '@type': 'Question',
+        name: item.q,
+        acceptedAnswer: {
+          '@type': 'Answer',
+          text: item.a,
+        },
+      })),
+    },
+  });
 
   const toggle = (i) => {
     setOpenIndex(openIndex === i ? null : i);

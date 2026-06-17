@@ -1,6 +1,22 @@
 import LegalPageLayout from '../components/LegalPageLayout';
+import { useSEO } from '../hooks/useSEO';
 
 export default function Privacy() {
+  useSEO({
+    canonical: 'https://lacakbuzzer.web.id/privacy',
+    schema: {
+      '@context': 'https://schema.org',
+      '@type': 'PrivacyPolicy',
+      name: 'Kebijakan Privasi Lacak Buzzer',
+      url: 'https://lacakbuzzer.web.id/privacy',
+      inLanguage: 'id',
+      publisher: {
+        '@type': 'Organization',
+        name: 'Lacak Buzzer',
+        url: 'https://lacakbuzzer.web.id',
+      },
+    },
+  });
   return (
     <LegalPageLayout title="Kebijakan Privasi">
       <section className="mb-8">
