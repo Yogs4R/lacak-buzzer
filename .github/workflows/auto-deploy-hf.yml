@@ -36,4 +36,4 @@ jobs:
           git commit -m "Deploy backend to Hugging Face Spaces"
           
           # Lakukan force push langsung ke main branch di Hugging Face Space
-          git push -f https://Yogs4R:$HF_TOKEN@huggingface.co/spaces/Yogs4R/lacak-buzzer-backend main:main
+          git push -f https://Yogs4R:$HF_TOKEN@huggingface.co/spaces/LacakBuzzer/lacak-buzzer-backend main:main

@@ -5,7 +5,7 @@ import { useSEO } from '../hooks/useSEO';
 const getApiUrl = (path) => {
   const base = import.meta.env.DEV
     ? ''
-    : (import.meta.env.VITE_API_URL || "https://yogs4r-lacak-buzzer-backend.hf.space");
+    : (import.meta.env.VITE_API_URL || "https://lacakbuzzer-lacak-buzzer-backend.hf.space");
   return `${base}${path}`;
 };
 

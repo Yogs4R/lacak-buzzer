@@ -45,6 +45,7 @@ inject_2.py
 **/accounts.db
 **/inject.py
 **/inject_2.py
+backend/twitter_accounts.json
 
 # Vite/Frontend
 frontend/node_modules/

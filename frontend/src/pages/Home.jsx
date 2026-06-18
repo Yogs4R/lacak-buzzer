@@ -8,7 +8,7 @@ const getApiUrl = (path) => {
   // Jika di production, gunakan VITE_API_URL dari Cloudflare, atau fallback ke URL Space Hugging Face.
   const base = import.meta.env.DEV
     ? ''
-    : (import.meta.env.VITE_API_URL || "https://yogs4r-lacak-buzzer-backend.hf.space");
+    : (import.meta.env.VITE_API_URL || "https://lacakbuzzer-lacak-buzzer-backend.hf.space");
   return `${base}${path}`;
 };
 
