@@ -5,7 +5,7 @@ Service untuk mengambil data profil dan tweet menggunakan twscrape.
 import os
 from twscrape import API, gather
 
-async def scrape_tweets(username: str, limit: int = 100):
+async def scrape_tweets(username: str, limit: int = 100): #int = 100 doesnt mean limit of tweets that been scraped only default
     tws_data_dir = os.getenv("TWS_DATA_DIR", "")
     db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
     api = API(db_path)
