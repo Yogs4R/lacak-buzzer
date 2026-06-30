@@ -26,6 +26,7 @@ async def scrape_tweets(username: str, limit: int = 100):
     
     # Ambil data tweet
     raw_tweets = await gather(api.user_tweets(user_info.id, limit=limit))
+    raw_tweets = raw_tweets[:limit]
     
     if len(raw_tweets) < 10:
         raise ValueError("insufficient_data", len(raw_tweets))
