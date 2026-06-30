@@ -66,8 +66,8 @@ app.add_middleware(
         "http://localhost:4173"           # Untuk testing preview lokal
     ],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST"],
+    allow_headers=["Content-Type", "Authorization"],
 )
 
 app.include_router(analyze_router, prefix="/api")

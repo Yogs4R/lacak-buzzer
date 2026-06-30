@@ -26,7 +26,7 @@ RUN pip install --no-cache-dir --upgrade pip && \
 COPY --chown=user:user . .
 
 # Set permissions for the data directory to allow JSON writing by user 1000
-RUN mkdir -p data && chown -R user:user data && chmod -R 777 data
+RUN mkdir -p data && chown -R user:user data && chmod -R 755 data
 
 # Switch to non-root user
 USER user

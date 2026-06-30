@@ -90,7 +90,16 @@ python -m pytest
 ## Pemindaian Keamanan & Kontainerisasi
 
 Backend proyek ini telah dilengkapi dengan standar keamanan industri:
-- **Dockerfile**: Menggunakan image base `python:3.12-slim` untuk mengurangi permukaan serangan (attack surface) kontainer, berjalan di bawah non-root user `user` (uid 1000) untuk membatasi hak akses.
-- **Trivy Scanner**: Dijalankan secara otomatis melalui alur kerja CI (`advanced-security.yml`) di setiap push dan pull request ke cabang `main` untuk mendeteksi kerentanan kritis (Critical/High CVEs) pada dependensi OS dan pustaka Python.
-- **Gitleaks**: Memindai seluruh riwayat komit untuk memastikan tidak ada kunci API (Firebase, OpenRouter) yang bocor di repositori publik.
+
+| Komponen | Detail |
+|:---|:---|
+| **Dockerfile** | Image base `python:3.12-slim` untuk mengurangi attack surface. Berjalan sebagai non-root `user` (uid 1000). Direktori `data/` menggunakan izin `chmod 755` (bukan `777`) untuk membatasi akses write hanya pada proses aplikasi. |
+| **Trivy Scanner** | Dijalankan otomatis via CI (`advanced-security.yml`) setiap push/PR ke `main`. Mendeteksi CVE `CRITICAL`/`HIGH` pada dependensi OS dan pustaka Python. |
+| **Gitleaks** | Memindai seluruh riwayat commit untuk memastikan tidak ada kunci API (Firebase, OpenRouter, Twitter) yang bocor di repositori publik. |
+| **Rate Limiting (Thread-safe)** | File JSON rate limit dilindungi `threading.Lock` untuk mencegah race condition pada concurrent requests. Website: maks 5 req/menit/IP. Bot: maks 10 reply global/menit, 5 per requester/menit, 1 per target/menit. |
+| **Validasi Input** | Username divalidasi dengan regex `[A-Za-z0-9_]` (maks 50 karakter). `mention_id` bot divalidasi sebagai numerik (maks 25 digit). List mention di-cap 500 entri untuk mencegah pertumbuhan file tak terbatas. |
+| **IP & Proxy Hardening** | IP klien dibaca via `X-Forwarded-For` header untuk dukungan reverse proxy (Hugging Face). IP/identifier dihapus dari execution logs sebelum disimpan ke Firestore (privasi). |
+| **CORS** | `allow_origins` di-whitelist eksplisit. Method dibatasi `GET`/`POST`, header dibatasi `Content-Type`/`Authorization`. |
+| **Bot Exponential Backoff** | Polling loop bot menerapkan backoff berlipat ganda (1× → 2× → 4× → 8×) saat error, reset otomatis setelah berhasil — mencegah ban Twitter akibat polling agresif. |
+| **Dependency Pinning** | Semua dependency Python di-pin ke versi spesifik di `requirements.txt`. Dependabot dikonfigurasi untuk PR otomatis setiap Senin. |
 

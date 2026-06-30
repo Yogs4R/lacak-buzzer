@@ -210,11 +210,18 @@ Berikut adalah mekanisme keamanan yang diterapkan pada proyek Lacak Buzzer untuk
 
 | Fitur / Komponen | Ancaman / Risiko | Solusi & Mekanisme Proteksi |
 |:---|:---|:---|
-| **Kredensial API & Firebase** | Kebocoran kunci otentikasi di repositori publik | Kredensial disimpan dalam `.env` dan diabaikan melalui `.gitignore`. Pipeline GitHub Actions dilengkapi dengan **Gitleaks** untuk menyaring kebocoran rahasia secara otomatis. |
-| **Docker Container** | Celah keamanan (vulnerabilities) sistem operasi di _image_ | Integrasi **Trivy Image Scanner** pada CI workflow untuk memindai OS/library di backend dan menghentikan rilis jika ditemukan celah level `HIGH` atau `CRITICAL`. |
-| **Stateless Tweets** | Pelanggaran privasi / memori server penuh | **Raw tweets** tidak disimpan ke Firestore ataupun dikirim ke LLM OpenRouter. Data hanya hidup sementara di memori selama kalkulasi backend baru dijalankan, lalu langsung dibersihkan. |
-| **Eksploitasi API / DDOS** | Pengurasan kuota token OpenRouter & Scraping | Implementasi rate limiting lokal berbasis alamat IP. Maksimal 5 permintaan sukses per menit per alamat IP untuk frontend. |
+| **Kredensial API & Firebase** | Kebocoran kunci otentikasi di repositori publik | Kredensial disimpan dalam `.env` dan `backend/secrets/` — keduanya diabaikan melalui `.gitignore`. Pipeline GitHub Actions dilengkapi dengan **Gitleaks** untuk menyaring kebocoran rahasia secara otomatis. |
+| **Docker Container** | Celah keamanan (vulnerabilities) sistem operasi di _image_ | Integrasi **Trivy Image Scanner** pada CI workflow untuk memindai OS/library di backend. Direktori `data/` berjalan dengan izin `755` (bukan `777`) untuk membatasi akses write hanya pada proses aplikasi. |
+| **Stateless Tweets** | Pelanggaran privasi / memori server penuh | **Raw tweets** tidak disimpan ke Firestore maupun dikirim ke LLM OpenRouter. Data hanya hidup sementara di memori selama kalkulasi, lalu langsung dibersihkan. |
+| **Rate Limiting — Website** | Pengurasan kuota token OpenRouter & Scraping (DDOS) | Rate limiting lokal berbasis IP: maks 5 permintaan sukses per menit per IP. Menggunakan `X-Forwarded-For` header untuk membaca IP klien yang sesungguhnya di balik reverse proxy (Hugging Face). |
+| **Rate Limiting — Bot X** | Spam analisis & duplikasi mention | Tiga lapis limit bot: maks 10 reply global/menit, maks 5 request per requester/menit, maks 1 analisis per target/menit. Operasi baca-tulis file JSON dilindungi **threading.Lock** untuk mencegah _race condition_ pada concurrent requests. |
+| **Validasi Input Username** | Injeksi karakter aneh / input tak terbatas | Setiap username divalidasi dengan regex `[A-Za-z0-9_]` dan dibatasi maksimum 50 karakter sebelum diteruskan ke scraper. |
+| **Validasi Mention ID (Bot)** | Manipulasi format `mention_id` / DoS pada file JSON | `mention_id` divalidasi sebagai string numerik Twitter (maks 25 digit). List `bot_processed_mentions` dibatasi maksimum 500 entri terakhir agar file tidak tumbuh tak terbatas. |
+| **Privasi Log ke Firestore** | Penyimpanan IP address pengguna secara permanen di database | Identifier (IP/username requester) dihapus dari execution logs sebelum disimpan ke Firestore. |
+| **CORS** | Akses API dari domain tidak sah | `allow_origins` di-whitelist secara eksplisit. Method dibatasi hanya `GET` & `POST`, header dibatasi hanya `Content-Type` & `Authorization`. |
 | **Manipulasi Skor** | Penilaian bias atau salah diagnosis | Penerapan logika **Anti-False-Positive Reducers** secara permanen. Pengurangan skor otomatis jika variansi semantik tinggi, total tweet harian kecil, atau aktivitas interaksi minim. |
+| **Bot Polling Backoff** | Rate limit ban dari Twitter akibat polling agresif saat error | Bot menerapkan **exponential backoff** saat terjadi error polling: jeda berlipat ganda per error (1× → 2× → 4× → 8×) dan reset kembali ke normal setelah berhasil. |
+| **Dependency Pinning** | Pembaruan library tak terduga yang membawa breaking changes atau CVE baru | Semua dependency Python di-pin ke versi spesifik di `requirements.txt`. **Dependabot** dikonfigurasi untuk membuka PR otomatis setiap ada versi terbaru (setiap Senin). |
 
 ---
 

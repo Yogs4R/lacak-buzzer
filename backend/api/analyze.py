@@ -1,6 +1,7 @@
 """
 Endpoint API FastAPI untuk melayani permintaan analisis dari website dan bot X.
 """
+import re
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from urllib.parse import urlparse
@@ -39,6 +40,23 @@ def normalize_username(target: str) -> str:
     return target.lstrip("@").strip()
 
 
+_USERNAME_RE = re.compile(r'^[A-Za-z0-9_]{1,50}$')
+
+
+def _validate_username(username: str) -> bool:
+    """Memvalidasi bahwa username hanya mengandung karakter yang diizinkan Twitter (maks 50 karakter)."""
+    return bool(_USERNAME_RE.match(username))
+
+
+def _get_client_ip(request: Request) -> str:
+    """Membaca IP klien dengan aman, dengan dukungan proxy terpercaya via X-Forwarded-For."""
+    forwarded_for = request.headers.get("X-Forwarded-For")
+    if forwarded_for:
+        # Ambil IP pertama dari chain (IP klien asli), strip whitespace
+        return forwarded_for.split(",")[0].strip()
+    return request.client.host if request.client else "127.0.0.1"
+
+
 
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_account(req: AnalysisRequest, request: Request):
@@ -66,10 +84,21 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             }
         )
 
+    # Validasi format username setelah normalisasi
+    if not _validate_username(target):
+        log_step(f"Error: Format username tidak valid: {target}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "invalid_username",
+                "message": "Format username tidak valid. Username hanya boleh mengandung huruf, angka, dan underscore."
+            }
+        )
+
     # 2. Tentukan identifier untuk rate limiting
     identifier = ""
     if req.source == "website":
-        identifier = request.client.host if request.client else "127.0.0.1"
+        identifier = _get_client_ip(request)
     elif req.source == "x_bot":
         if not req.requester:
             log_step("Error: Identitas requester bot kosong.")
@@ -257,12 +286,14 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             "explanation": explanation,
             "caveat": "Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu."
         }
+        # Hilangkan identifier (IP/requester) dari logs sebelum disimpan ke Firestore (privasi)
+        safe_logs = [line for line in execution_logs if identifier not in line] if identifier else execution_logs
         save_scan_history(
             username=target,
             score=score,
             risk_label=risk_band,
             full_report=full_report,
-            logs=execution_logs
+            logs=safe_logs
         )
         log_step("Penyimpanan Firestore sukses.")
     except Exception as e:

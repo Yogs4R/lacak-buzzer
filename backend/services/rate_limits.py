@@ -3,8 +3,13 @@ Penyimpanan dan pengecekan rate limit metadata menggunakan file JSON lokal berba
 """
 import os
 import json
+import re
 import time
+import threading
 from typing import Optional, List
+
+# Lock global untuk mencegah race condition pada operasi baca-tulis file JSON
+_rate_limit_lock = threading.Lock()
 
 LIMITS_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -40,6 +45,19 @@ def _clean_old_timestamps(timestamps: List[float]) -> List[float]:
     return [t for t in timestamps if now - t < 60]
 
 
+_MENTION_ID_PATTERN = re.compile(r'^[0-9]{1,25}$')
+
+
+def _validate_mention_id(mention_id: Optional[str]) -> bool:
+    """Memvalidasi bahwa mention_id adalah string numerik Twitter yang valid (maks 25 digit)."""
+    if mention_id is None:
+        return True
+    return bool(_MENTION_ID_PATTERN.match(str(mention_id)))
+
+
+_MAX_PROCESSED_MENTIONS = 500  # Batas maksimum entri mention yang disimpan
+
+
 def check_rate_limit(
     source: str,
     identifier: str,
@@ -50,7 +68,12 @@ def check_rate_limit(
     Memeriksa apakah limit kuota per menit terlampaui.
     Mengembalikan pesan error jika terlampaui, atau None jika masih di bawah limit.
     """
-    data = _load_limits()
+    # Validasi format mention_id sebelum diproses
+    if mention_id is not None and not _validate_mention_id(mention_id):
+        return "Format mention ID tidak valid."
+
+    with _rate_limit_lock:
+        data = _load_limits()
 
     if source == "website":
         ip = identifier
@@ -100,57 +123,61 @@ def increment_rate_limit(
     """
     Meningkatkan counter rate limit setelah analisis sukses dengan merekam timestamp saat ini.
     """
-    data = _load_limits()
-    now = time.time()
+    with _rate_limit_lock:
+        data = _load_limits()
+        now = time.time()
 
-    # Pastikan struktur database JSON siap
-    if "website_ips" not in data:
-        data["website_ips"] = {}
-    if "bot_requesters" not in data:
-        data["bot_requesters"] = {}
-    if "bot_targets" not in data:
-        data["bot_targets"] = {}
-    if "bot_global_replies" not in data:
-        data["bot_global_replies"] = []
-    if "bot_processed_mentions" not in data:
-        data["bot_processed_mentions"] = []
-    
-    # Increment total scans
-    data["total_scans"] = data.get("total_scans", 0) + 1
+        # Pastikan struktur database JSON siap
+        if "website_ips" not in data:
+            data["website_ips"] = {}
+        if "bot_requesters" not in data:
+            data["bot_requesters"] = {}
+        if "bot_targets" not in data:
+            data["bot_targets"] = {}
+        if "bot_global_replies" not in data:
+            data["bot_global_replies"] = []
+        if "bot_processed_mentions" not in data:
+            data["bot_processed_mentions"] = []
 
-    if source == "website":
-        ip = identifier
-        timestamps = data["website_ips"].get(ip, [])
-        cleaned = _clean_old_timestamps(timestamps)
-        cleaned.append(now)
-        data["website_ips"][ip] = cleaned
+        # Increment total scans
+        data["total_scans"] = data.get("total_scans", 0) + 1
 
-    elif source == "x_bot":
-        # Increment global replies
-        global_replies = data["bot_global_replies"]
-        cleaned_global = _clean_old_timestamps(global_replies)
-        cleaned_global.append(now)
-        data["bot_global_replies"] = cleaned_global
+        if source == "website":
+            ip = identifier
+            timestamps = data["website_ips"].get(ip, [])
+            cleaned = _clean_old_timestamps(timestamps)
+            cleaned.append(now)
+            data["website_ips"][ip] = cleaned
 
-        # Increment requester
-        requester = identifier
-        timestamps = data["bot_requesters"].get(requester, [])
-        cleaned_req = _clean_old_timestamps(timestamps)
-        cleaned_req.append(now)
-        data["bot_requesters"][requester] = cleaned_req
+        elif source == "x_bot":
+            # Increment global replies
+            global_replies = data["bot_global_replies"]
+            cleaned_global = _clean_old_timestamps(global_replies)
+            cleaned_global.append(now)
+            data["bot_global_replies"] = cleaned_global
 
-        # Increment target
-        if target:
-            timestamps = data["bot_targets"].get(target, [])
-            cleaned_target = _clean_old_timestamps(timestamps)
-            cleaned_target.append(now)
-            data["bot_targets"][target] = cleaned_target
+            # Increment requester
+            requester = identifier
+            timestamps = data["bot_requesters"].get(requester, [])
+            cleaned_req = _clean_old_timestamps(timestamps)
+            cleaned_req.append(now)
+            data["bot_requesters"][requester] = cleaned_req
 
-        # Track processed mention
-        if mention_id and mention_id not in data["bot_processed_mentions"]:
-            data["bot_processed_mentions"].append(mention_id)
+            # Increment target
+            if target:
+                timestamps = data["bot_targets"].get(target, [])
+                cleaned_target = _clean_old_timestamps(timestamps)
+                cleaned_target.append(now)
+                data["bot_targets"][target] = cleaned_target
 
-    _save_limits(data)
+            # Track processed mention — batasi ukuran list agar file tidak tumbuh tak terbatas
+            if mention_id and mention_id not in data["bot_processed_mentions"]:
+                data["bot_processed_mentions"].append(mention_id)
+                # Buang entri lama jika melebihi batas maksimum
+                if len(data["bot_processed_mentions"]) > _MAX_PROCESSED_MENTIONS:
+                    data["bot_processed_mentions"] = data["bot_processed_mentions"][-_MAX_PROCESSED_MENTIONS:]
+
+        _save_limits(data)
 
 
 def get_global_scan_count() -> int:

@@ -1,4 +1,4 @@
-"""
+﻿"""
 Proses utama bot X yang memantau mention dan membalas analisis.
 """
 
@@ -205,7 +205,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
     from services.init_db import init_twitter_db
     import os
 
-    print(f"🚀 X Bot aktif! Memantau mention untuk @{bot_username}...")
+    print(f"X Bot aktif! Memantau mention untuk @{bot_username}...")
     print(f"   Backend URL: {base_url}")
     print(f"   Interval polling: {poll_interval} detik")
 
@@ -228,20 +228,24 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                 access_token=access_token,
                 access_token_secret=access_token_secret
             )
-            print("✅ Tweepy Client (X API v2) terinisialisasi untuk memposting balasan.")
+            print("Tweepy Client (X API v2) terinisialisasi untuk memposting balasan.")
         except Exception as e:
-            print(f"❌ Gagal menginisialisasi Tweepy Client: {e}")
+            print(f"Gagal menginisialisasi Tweepy Client: {e}")
     else:
-        print("⚠️ Kredensial X API v2 (X_CONSUMER_KEY, dsb.) tidak lengkap. Bot akan berjalan dalam mode baca-saja (tidak bisa memposting balasan).")
+        print("Kredensial X API v2 tidak lengkap. Bot berjalan dalam mode baca-saja.")
+
+    # Exponential backoff saat terjadi error berturutan
+    MAX_BACKOFF_MULTIPLIER = 8
+    backoff_multiplier = 1
 
     while True:
         try:
-            print(f"\n🔍 [{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
-            
+            print(f"\n[{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
+
             # Cari mention bot di Twitter/X menggunakan twscrape search
             query = f"@{bot_username}"
             raw_tweets = await gather(scraper_api.search(query, limit=20))
-            
+
             print(f"   Ditemukan {len(raw_tweets)} tweet yang me-mention @{bot_username}.")
 
             for t in raw_tweets:
@@ -259,7 +263,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                 )
 
                 if reply_text:
-                    print(f"🎯 Memproses mention dari @{requester} (ID: {mention_id})")
+                    print(f"Memproses mention dari @{requester} (ID: {mention_id})")
                     print(f"   Isi tweet: \"{text}\"")
                     print(f"   Draft Balasan:\n{reply_text}")
 
@@ -270,17 +274,26 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                                 text=reply_text,
                                 in_reply_to_tweet_id=int(mention_id)
                             )
-                            print(f"   ✅ Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
+                            print(f"   Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
                         except Exception as e:
-                            print(f"   ❌ Gagal mengirim balasan ke X/Twitter: {e}")
+                            print(f"   Gagal mengirim balasan ke X/Twitter: {e}")
                     else:
-                        print("   ⚠️ Balasan tidak diposting (karena kredensial API kosong atau salah).")
+                        print("   Balasan tidak diposting (kredensial API kosong atau salah).")
                 else:
                     # Mengabaikan mention yang tidak valid
                     pass
 
+            # Iterasi berhasil - reset backoff ke normal
+            backoff_multiplier = 1
+
         except Exception as e:
-            print(f"❌ Error dalam polling loop: {e}")
+            print(f"Error dalam polling loop: {e}")
+            # Terapkan exponential backoff untuk mengurangi tekanan ke Twitter saat error
+            sleep_duration = poll_interval * backoff_multiplier
+            print(f"   Backoff aktif: menunggu {sleep_duration} detik sebelum retry (multiplier: {backoff_multiplier}x)...")
+            backoff_multiplier = min(backoff_multiplier * 2, MAX_BACKOFF_MULTIPLIER)
+            await asyncio.sleep(sleep_duration)
+            continue
 
         await asyncio.sleep(poll_interval)
 
