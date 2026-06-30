@@ -252,12 +252,12 @@ Website rate limit:
 
 Recommended website limit for MVP:
 
-- 5 successful analyses per IP per day
+- 5 successful analyses per IP per minute
 
 If the limit is reached, show:
 
 ```text
-Batas analisis harian tercapai. Coba lagi besok.
+Batas analisis per menit tercapai. Coba lagi beberapa saat lagi.
 ```
 
 ## X Bot Requirements
@@ -310,27 +310,27 @@ Use local JSON metadata to enforce bot limits.
 
 Limits:
 
-- Maximum 10 public bot replies per day globally.
-- Maximum 3 successful analysis requests per requester per day.
-- Maximum 1 public analysis per target account per day.
+- Maximum 10 public bot replies per minute globally.
+- Maximum 5 successful analysis requests per requester per minute.
+- Maximum 1 public analysis per target account per minute.
 - Do not reply twice to the same mention ID.
 
 If the global limit is reached:
 
 ```text
-Batas harian bot sudah tercapai. Coba lagi besok.
+Batas per menit bot sudah tercapai. Coba lagi beberapa saat lagi.
 ```
 
 If the requester limit is reached:
 
 ```text
-Batas permintaan harian kamu sudah tercapai. Coba lagi besok.
+Batas permintaan per menit kamu sudah tercapai. Coba lagi beberapa saat lagi.
 ```
 
 If the target account was already analyzed today:
 
 ```text
-Akun ini sudah dianalisis hari ini. Coba lagi besok.
+Akun ini sudah dianalisis baru-baru ini. Coba lagi beberapa saat lagi.
 ```
 
 ## Backend API Requirements

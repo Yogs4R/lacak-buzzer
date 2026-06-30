@@ -1,10 +1,10 @@
 """
-Penyimpanan dan pengecekan rate limit metadata menggunakan file JSON lokal.
+Penyimpanan dan pengecekan rate limit metadata menggunakan file JSON lokal berbasis rolling window 1 menit.
 """
 import os
 import json
-from datetime import datetime, timezone
-from typing import Optional
+import time
+from typing import Optional, List
 
 LIMITS_FILE = os.path.join(
     os.path.dirname(os.path.dirname(__file__)),
@@ -34,6 +34,12 @@ def _save_limits(data: dict):
         pass
 
 
+def _clean_old_timestamps(timestamps: List[float]) -> List[float]:
+    """Menghapus timestamp yang lebih lama dari 60 detik."""
+    now = time.time()
+    return [t for t in timestamps if now - t < 60]
+
+
 def check_rate_limit(
     source: str,
     identifier: str,
@@ -41,21 +47,18 @@ def check_rate_limit(
     mention_id: Optional[str] = None
 ) -> Optional[str]:
     """
-    Memeriksa apakah limit kuota harian terlampaui.
+    Memeriksa apakah limit kuota per menit terlampaui.
     Mengembalikan pesan error jika terlampaui, atau None jika masih di bawah limit.
     """
     data = _load_limits()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
-
-    # Jika tanggal pada file berbeda dengan hari ini, maka limit harian di-reset
-    if data.get("date") != today:
-        return None
 
     if source == "website":
         ip = identifier
-        count = data.get("website_ips", {}).get(ip, 0)
-        if count >= 5:
-            return "Batas analisis harian tercapai. Coba lagi besok."
+        ip_limits = data.get("website_ips", {})
+        timestamps = ip_limits.get(ip, [])
+        cleaned = _clean_old_timestamps(timestamps)
+        if len(cleaned) >= 5:
+            return "Batas analisis per menit tercapai. Coba lagi beberapa saat lagi."
 
     elif source == "x_bot":
         # 1. Mencegah memproses ID mention yang sama lebih dari sekali
@@ -63,22 +66,27 @@ def check_rate_limit(
             if mention_id in data.get("bot_processed_mentions", []):
                 return "Duplicate mention"
 
-        # 2. Batas maksimum 10 balasan publik bot per hari secara global
-        if data.get("bot_global_replies", 0) >= 10:
-            return "Batas harian bot sudah tercapai. Coba lagi besok."
+        # 2. Batas maksimum 10 balasan publik bot per menit secara global
+        global_replies = data.get("bot_global_replies", [])
+        cleaned_global = _clean_old_timestamps(global_replies)
+        if len(cleaned_global) >= 10:
+            return "Batas per menit bot sudah tercapai. Coba lagi beberapa saat lagi."
 
-        # 3. Batas maksimum 3 permintaan analisis per requester per hari
+        # 3. Batas maksimum 5 permintaan analisis per requester per menit
         requester = identifier
-        req_count = data.get("bot_requesters", {}).get(requester, 0)
-        if req_count >= 3:
-            return "Batas permintaan harian kamu sudah tercapai. Coba lagi besok."
+        req_limits = data.get("bot_requesters", {})
+        timestamps = req_limits.get(requester, [])
+        cleaned_req = _clean_old_timestamps(timestamps)
+        if len(cleaned_req) >= 5:
+            return "Batas permintaan per menit kamu sudah tercapai. Coba lagi beberapa saat lagi."
 
-        # 4. Batas maksimum 1 analisis publik per target akun per hari
+        # 4. Batas maksimum 1 analisis per target akun per menit
         if target:
-            # target dalam database bot_targets berupa username: tanggal
-            target_date = data.get("bot_targets", {}).get(target)
-            if target_date == today:
-                return "Akun ini sudah dianalisis hari ini. Coba lagi besok."
+            target_limits = data.get("bot_targets", {})
+            timestamps = target_limits.get(target, [])
+            cleaned_target = _clean_old_timestamps(timestamps)
+            if len(cleaned_target) >= 1:
+                return "Akun ini sudah dianalisis baru-baru ini. Coba lagi beberapa saat lagi."
 
     return None
 
@@ -90,48 +98,55 @@ def increment_rate_limit(
     mention_id: Optional[str] = None
 ):
     """
-    Meningkatkan counter rate limit setelah analisis sukses.
+    Meningkatkan counter rate limit setelah analisis sukses dengan merekam timestamp saat ini.
     """
     data = _load_limits()
-    today = datetime.now(timezone.utc).strftime("%Y-%m-%d")
+    now = time.time()
 
-    # Jika ganti hari, inisialisasi ulang
-    if data.get("date") != today:
-        data = {
-            "date": today,
-            "website_ips": {},
-            "bot_global_replies": 0,
-            "bot_requesters": {},
-            "bot_targets": {},
-            "bot_processed_mentions": data.get("bot_processed_mentions", []),
-            "total_scans": data.get("total_scans", 0)
-        }
-
-    # Increment global scan count
+    # Pastikan struktur database JSON siap
+    if "website_ips" not in data:
+        data["website_ips"] = {}
+    if "bot_requesters" not in data:
+        data["bot_requesters"] = {}
+    if "bot_targets" not in data:
+        data["bot_targets"] = {}
+    if "bot_global_replies" not in data:
+        data["bot_global_replies"] = []
+    if "bot_processed_mentions" not in data:
+        data["bot_processed_mentions"] = []
+    
+    # Increment total scans
     data["total_scans"] = data.get("total_scans", 0) + 1
 
     if source == "website":
         ip = identifier
-        if "website_ips" not in data:
-            data["website_ips"] = {}
-        data["website_ips"][ip] = data["website_ips"].get(ip, 0) + 1
+        timestamps = data["website_ips"].get(ip, [])
+        cleaned = _clean_old_timestamps(timestamps)
+        cleaned.append(now)
+        data["website_ips"][ip] = cleaned
 
     elif source == "x_bot":
-        if "bot_requesters" not in data:
-            data["bot_requesters"] = {}
-        if "bot_targets" not in data:
-            data["bot_targets"] = {}
-        if "bot_processed_mentions" not in data:
-            data["bot_processed_mentions"] = []
+        # Increment global replies
+        global_replies = data["bot_global_replies"]
+        cleaned_global = _clean_old_timestamps(global_replies)
+        cleaned_global.append(now)
+        data["bot_global_replies"] = cleaned_global
 
-        data["bot_global_replies"] = data.get("bot_global_replies", 0) + 1
-
+        # Increment requester
         requester = identifier
-        data["bot_requesters"][requester] = data["bot_requesters"].get(requester, 0) + 1
+        timestamps = data["bot_requesters"].get(requester, [])
+        cleaned_req = _clean_old_timestamps(timestamps)
+        cleaned_req.append(now)
+        data["bot_requesters"][requester] = cleaned_req
 
+        # Increment target
         if target:
-            data["bot_targets"][target] = today
+            timestamps = data["bot_targets"].get(target, [])
+            cleaned_target = _clean_old_timestamps(timestamps)
+            cleaned_target.append(now)
+            data["bot_targets"][target] = cleaned_target
 
+        # Track processed mention
         if mention_id and mention_id not in data["bot_processed_mentions"]:
             data["bot_processed_mentions"].append(mention_id)
 

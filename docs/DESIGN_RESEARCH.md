@@ -196,7 +196,7 @@ The website has 4 distinct states. Each state has a defined layout and copy.
 | Account private | `Akun ini bersifat privat. Analisis tidak dapat dilakukan.` |
 | Account not found | `Akun tidak ditemukan. Periksa kembali username yang dimasukkan.` |
 | Insufficient data (<20 tweets) | `Data tweet tidak cukup untuk menghasilkan indikator yang bertanggung jawab.` |
-| Rate limit reached (IP) | `Batas analisis harian tercapai. Coba lagi besok.` |
+| Rate limit reached (IP) | `Batas analisis per menit tercapai. Coba lagi beberapa saat lagi.` |
 | Scraper problem | `Layanan analisis sementara tidak tersedia. Coba beberapa saat lagi.` |
 | OpenRouter failure | *(fallback template used — not shown as error to user)* |
 

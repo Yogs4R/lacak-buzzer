@@ -1,9 +1,9 @@
 """
-Unit test untuk sistem rate limit.
+Unit test untuk sistem rate limit berbasis rolling window.
 """
 import pytest
 from unittest.mock import patch
-from datetime import datetime, timezone, timedelta
+import time
 from services import rate_limits
 
 
@@ -25,11 +25,11 @@ def test_website_rate_limiting():
 
     # 6th should exceed limit
     err = rate_limits.check_rate_limit("website", ip)
-    assert err == "Batas analisis harian tercapai. Coba lagi besok."
+    assert err == "Batas analisis per menit tercapai. Coba lagi beberapa saat lagi."
 
 
 def test_bot_global_rate_limiting():
-    # 10 checks globally
+    # 10 checks globally (limit is 10/minute)
     for i in range(10):
         # Using different requesters and targets to not trigger those limits
         requester = f"user_{i}"
@@ -39,33 +39,33 @@ def test_bot_global_rate_limiting():
 
     # 11th should fail on global limit
     err = rate_limits.check_rate_limit("x_bot", "another_user", "another_target")
-    assert err == "Batas harian bot sudah tercapai. Coba lagi besok."
+    assert err == "Batas per menit bot sudah tercapai. Coba lagi beberapa saat lagi."
 
 
 def test_bot_requester_rate_limiting():
     requester = "active_requester"
 
-    # 3 analyses per requester
-    for i in range(3):
+    # 5 analyses per requester (limit is 5/minute)
+    for i in range(5):
         target = f"target_{i}"
         assert rate_limits.check_rate_limit("x_bot", requester, target) is None
         rate_limits.increment_rate_limit("x_bot", requester, target)
 
-    # 4th should fail
-    err = rate_limits.check_rate_limit("x_bot", requester, "target_3")
-    assert err == "Batas permintaan harian kamu sudah tercapai. Coba lagi besok."
+    # 6th should fail
+    err = rate_limits.check_rate_limit("x_bot", requester, "target_5")
+    assert err == "Batas permintaan per menit kamu sudah tercapai. Coba lagi beberapa saat lagi."
 
 
 def test_bot_target_rate_limiting():
     target = "popular_target"
 
-    # First analysis is ok
+    # First analysis is ok (limit is 1/minute)
     assert rate_limits.check_rate_limit("x_bot", "requester_1", target) is None
     rate_limits.increment_rate_limit("x_bot", "requester_1", target)
 
-    # Second analysis of same target today fails
+    # Second analysis of same target within a minute fails
     err = rate_limits.check_rate_limit("x_bot", "requester_2", target)
-    assert err == "Akun ini sudah dianalisis hari ini. Coba lagi besok."
+    assert err == "Akun ini sudah dianalisis baru-baru ini. Coba lagi beberapa saat lagi."
 
 
 def test_bot_duplicate_mention_prevention():
@@ -80,7 +80,7 @@ def test_bot_duplicate_mention_prevention():
     assert err == "Duplicate mention"
 
 
-def test_rate_limit_reset_on_new_day():
+def test_rate_limit_reset_on_time_elapsed():
     ip = "192.168.1.1"
 
     # Exceed limit
@@ -88,13 +88,8 @@ def test_rate_limit_reset_on_new_day():
         rate_limits.increment_rate_limit("website", ip)
     assert rate_limits.check_rate_limit("website", ip) is not None
 
-    # Mock date to tomorrow
-    tomorrow = (datetime.now(timezone.utc) + timedelta(days=1)).strftime("%Y-%m-%d")
-
-    # Manually modify the file's date to simulate tomorrow
-    data = rate_limits._load_limits()
-    data["date"] = tomorrow
-    rate_limits._save_limits(data)
-
-    # Now checking limit should succeed (resets on date mismatch)
-    assert rate_limits.check_rate_limit("website", ip) is None
+    # Mock time.time to simulate 61 seconds in the future
+    now = time.time()
+    with patch("time.time", return_value=now + 61):
+        # Now checking limit should succeed (rolling window elapsed)
+        assert rate_limits.check_rate_limit("website", ip) is None

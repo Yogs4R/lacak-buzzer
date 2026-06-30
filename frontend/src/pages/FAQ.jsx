@@ -59,7 +59,7 @@ export default function FAQ() {
     },
     {
       q: 'Apakah ada batas penggunaan?',
-      a: 'Untuk versi MVP ini, setiap alamat IP dibatasi maksimal 5 kali analisis sukses per hari demi menjaga stabilitas server. Semua layanan ini gratis tanpa memerlukan registrasi.',
+      a: 'Untuk versi MVP ini, setiap alamat IP dibatasi maksimal 5 kali analisis sukses per menit demi menjaga stabilitas server. Semua layanan ini gratis tanpa memerlukan registrasi.',
     },
     {
       q: 'Apa itu Indikator Risiko Amplifikasi Terkoordinasi?',

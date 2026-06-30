@@ -69,14 +69,13 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             )
         identifier = req.requester
 
-    # 3. Pengecekan rate limit sebelum memproses (fail early) - Dinonaktifkan sementara untuk MVP
-    limit_message = None
-    # limit_message = check_rate_limit(
-    #     source=req.source,
-    #     identifier=identifier,
-    #     target=target,
-    #     mention_id=req.mention_id
-    # )
+    # 3. Pengecekan rate limit sebelum memproses (fail early)
+    limit_message = check_rate_limit(
+        source=req.source,
+        identifier=identifier,
+        target=target,
+        mention_id=req.mention_id
+    )
     if limit_message:
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,

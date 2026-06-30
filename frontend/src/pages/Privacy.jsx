@@ -60,7 +60,7 @@ export default function Privacy() {
           4. Batas Penggunaan (Rate Limiting)
         </h2>
         <p>
-          Kami menggunakan metadata teknis dasar seperti alamat IP untuk melacak jumlah pencarian harian guna mendeteksi penyalahgunaan dan menerapkan batas 5 pencarian per hari. Data ini disimpan dalam file lokal terenkripsi/terpisah dan tidak dikaitkan dengan profil pencarian Anda.
+          Kami menggunakan metadata teknis dasar seperti alamat IP untuk melacak jumlah pencarian guna mendeteksi penyalahgunaan dan menerapkan batas 5 pencarian per menit. Data ini disimpan dalam file lokal terenkripsi/terpisah dan tidak dikaitkan dengan profil pencarian Anda.
         </p>
       </section>
 
