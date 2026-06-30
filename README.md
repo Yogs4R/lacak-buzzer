@@ -7,6 +7,22 @@
 ![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
 ![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
 
+## Daftar Isi
+- [Deskripsi Proyek](#deskripsi-proyek)
+- [Anggota Kelompok](#anggota-kelompok)
+- [Detail Tech Stack](#detail-tech-stack)
+- [Arsitektur Sistem & Alur Request (Workflows)](#arsitektur-sistem--alur-request-workflows)
+  - [Arsitektur Sistem](#arsitektur-sistem)
+  - [Diagram Alur Analisis Baru (Request Flow)](#diagram-alur-analisis-baru-request-flow)
+  - [Diagram Alur Mengambil Riwayat (History Flow)](#diagram-alur-mengambil-riwayat-history-flow)
+- [Struktur Proyek](#struktur-proyek)
+- [Tabel Keamanan (Security Table)](#tabel-keamanan-security-table)
+- [Instalasi & Cara Menjalankan](#instalasi--cara-menjalankan)
+- [Status X Bot & Contoh Respon](#status-x-bot--contoh-respon)
+- [Catatan Keamanan](#catatan-keamanan)
+
+---
+
 ## Deskripsi Proyek
 **Lacak Buzzer** adalah sistem *Minimum Viable Product* (MVP) ringan yang menganalisis profil dan aktivitas akun X/Twitter untuk memberikan **Indikator Risiko Amplifikasi Terkoordinasi**. Sistem ini memperkirakan pola perilaku seperti repetisi, intensitas aktivitas, dan interaksi tanpa mengklaim akun tersebut palsu, berbayar, atau berafiliasi secara definitif.
 
@@ -18,24 +34,112 @@
 | [Naufal](https://github.com/naufalid755) | Frontend 1 |
 | [Falen](https://github.com/luckywtrike-rgb) | Frontend 2 |
 
-## Tech Stack
-- **Frontend**: React.js, Vite, Tailwind CSS
-- **Backend**: Python, FastAPI
-- **Scraping**: `twscrape`
-- **Machine Learning**: `sentence-transformers/all-MiniLM-L6-v2` (untuk ekstraksi kemiripan semantik)
-- **LLM**: OpenRouter (untuk *natural language explanation*)
+## Detail Tech Stack
+
+### 1. Frontend
+*   **React.js (v18)**: Framework utama untuk pembuatan Single Page Application (SPA).
+*   **Vite**: Alat build super cepat untuk manajemen aset dan *hot module replacement* (HMR).
+*   **CSS Kustom / Tailwind CSS**: Desain visual responsif, premium, dan gelap (dark mode) dengan transisi halus.
+*   **Cloudflare Pages**: Media hosting statis untuk frontend.
+
+### 2. Backend (API)
+*   **Python (v3.12)**: Bahasa pemrograman utama backend.
+*   **FastAPI**: Framework web asinkron dengan performa tinggi yang menyediakan endpoint REST API.
+*   **Uvicorn**: Server web ASGI untuk menjalankan FastAPI.
+*   **Hugging Face Spaces**: Platform hosting backend menggunakan kontainer Docker.
+
+### 3. Layanan Pihak Ketiga & ML Lokal
+*   **Firebase Firestore**: Database dokumen NoSQL untuk menyimpan statistik global dan riwayat pemindaian (`scan_history`).
+*   **twscrape**: Kakas scraping data X/Twitter secara terprogram tanpa API X resmi.
+*   **all-MiniLM-L6-v2**: Model Sentence-Transformers lokal untuk memproses kemiripan semantik antar-tweet.
+*   **OpenRouter (LLM)**: Model AI eksternal untuk menyusun eksplanasi perilaku dalam Bahasa Indonesia secara ramah dan terstruktur.
+
+---
+
+## Arsitektur Sistem & Alur Request (Workflows)
+
+### Arsitektur Sistem
+Aplikasi ini berjalan secara terpisah (*decoupled*):
+*   **Frontend Client** terhubung ke **FastAPI Backend** via HTTP/HTTPS.
+*   Backend menggunakan penyimpanan lokal untuk rate-limiting metadata (stateless JSON files) dan terhubung ke **Firebase Firestore** untuk leaderboard.
+*   Backend memanggil model AI lokal untuk semantik, dan **OpenRouter API** untuk eksplanasi teks.
+
+### Diagram Alur Analisis Baru (Request Flow)
+Berikut adalah visualisasi alur request ketika pengguna melakukan analisis akun baru:
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna (Browser)
+    participant FE as Frontend (React)
+    participant BE as Backend (FastAPI)
+    participant Scraper as twscrape (X/Twitter)
+    participant ML as MiniLM (Embeddings)
+    participant OR as OpenRouter (LLM)
+    participant DB as Firestore (Firebase)
+
+    User->>FE: Input Username Target (misal: @username)
+    FE->>BE: POST /api/analyze {target, source: 'website'}
+    Note over BE: Cek Rate Limit (Berbasis IP)
+    
+    alt Jika Kena Rate Limit
+        BE-->>FE: Error 429: Batas analisis tercapai
+        FE-->>User: Tampilkan Pesan Batas Analisis Tercapai
+    else Valid & Aman
+        BE->>Scraper: Ambil 100 Tweet Terbaru & Profil
+        Scraper-->>BE: Data Profil & Tweets (Text, Hashtag, URL, Mentions)
+        
+        alt Tweets < 10
+            BE-->>FE: Error: Data tweet tidak cukup
+            FE-->>User: Tampilkan Pesan "Data Tidak Cukup"
+        else Data Cukup (>= 10)
+            BE->>ML: Bandingkan Kemiripan Semantik (MiniLM)
+            ML-->>BE: Skor Kemiripan
+            Note over BE: Hitung Metrik & Formula Scoring Baku
+            BE->>OR: Minta Eksplanasi (Metrik Ringkasan)
+            OR-->>BE: Teks Eksplanasi (Bahasa Indonesia)
+            BE->>DB: Simpan Riwayat Tanpa Tweets (Firestore)
+            BE-->>FE: Response (Score, Metrics, Signals, Explanations, raw_tweets)
+            FE-->>User: Tampilkan ResultCard & Hubungkan ke Modal Detail (Lihat Detail)
+        end
+    end
+```
+
+### Diagram Alur Mengambil Riwayat (History Flow)
+Berikut adalah alur saat pengguna mengeklik akun dari papan Leaderboard (tanpa scraping ulang):
+
+```mermaid
+sequenceDiagram
+    autonumber
+    actor User as Pengguna (Browser)
+    participant FE as Frontend (React)
+    participant BE as Backend (FastAPI)
+    participant DB as Firestore (Firebase)
+
+    User->>FE: Klik Akun di Leaderboard
+    FE->>BE: GET /api/history/{username}
+    BE->>DB: Cari di Koleksi scan_history
+    alt Ditemukan
+        DB-->>BE: full_report (Skor, Metrik, Penjelasan, dll)
+        BE-->>FE: Response full_report (tanpa raw_tweets)
+        FE-->>User: Tampilkan Laporan (Modal Detail menunjukkan "Data Terlindungi" demi Privasi)
+    else Tidak Ditemukan
+        BE-->>FE: Error 404
+        FE-->>User: Tampilkan Pesan Error
+    end
+```
+
+---
 
 ## Struktur Proyek
-Sistem ini menggunakan satu repositori (monorepo) dengan dua batasan *runtime* utama:
-1. **FastAPI Process** - API Backend dan *Feature Extraction* (melayani web dan bot).
-2. **X Bot Process** - Memantau *mentions* dan memanggil API FastAPI untuk membalas di X.
 
 ```text
 lacak-buzzer/
 ├── .github/
 │   ├── changelog-config.json         # Konfigurasi kategori changelog otomatis
 │   └── workflows/
-│       └── auto-release.yml          # Workflow Github Action untuk rilis versi
+│       ├── auto-release.yml          # Workflow Github Action untuk rilis versi
+│       └── advanced-security.yml     # Pemindaian Gitleaks (Secrets) & Trivy (Container)
 ├── frontend/                         # Website SPA (React + Vite)
 │   ├── public/
 │   │   ├── metadata.json             # Meta data aplikasi
@@ -46,10 +150,11 @@ lacak-buzzer/
 │   │   ├── components/
 │   │   │   ├── Footer.jsx            # Komponen catatan/disclaimer footer
 │   │   │   ├── Header.jsx            # Komponen navigasi atas
-│   │   │   ├── ResultCard.jsx        # Komponen penampil hasil skor risiko
-│   │   │   └── SearchBar.jsx         # Komponen pencarian username
+│   │   │   ├── ResultCard.jsx        # Komponen penampil hasil skor risiko + detail modal
+│   │   │   ├── SearchBar.jsx         # Komponen pencarian username
+│   │   │   └── TweetDetailsModal.jsx # Pop-up rincian tweet & metrik detail (See Details)
 │   │   ├── pages/
-│   │   │   └── Home.jsx              # Halaman utama Lacak Buzzer
+│   │   │   └── Home.jsx              # Halaman utama Lacak Buzzer dengan Skeleton Loaders
 │   │   ├── App.jsx                   # Root komponen UI
 │   │   ├── index.css                 # Global CSS (Tailwind directives)
 │   │   └── main.jsx                  # Entry point aplikasi React
@@ -92,11 +197,26 @@ lacak-buzzer/
 ├── BRAND_RESOURCES.md                # Panduan identitas visual & copywriting
 ├── DESIGN.md                         # Spesifikasi teknis desain & UI komponen
 ├── DESIGN_RESEARCH.md                # Logika riset desain (ATM Method)
-├── README.md                         # Dokumentasi pusat repositori (berkas ini)
 ├── .env.example                      # Template variabel environment rahasia
 ├── .gitignore                        # Daftar file yang diabaikan Git
 └── Procfile                          # Konfigurasi perintah runner production
 ```
+
+---
+
+## Tabel Keamanan (Security Table)
+
+Berikut adalah mekanisme keamanan yang diterapkan pada proyek Lacak Buzzer untuk menjamin integritas data dan proteksi sistem:
+
+| Fitur / Komponen | Ancaman / Risiko | Solusi & Mekanisme Proteksi |
+|:---|:---|:---|
+| **Kredensial API & Firebase** | Kebocoran kunci otentikasi di repositori publik | Kredensial disimpan dalam `.env` dan diabaikan melalui `.gitignore`. Pipeline GitHub Actions dilengkapi dengan **Gitleaks** untuk menyaring kebocoran rahasia secara otomatis. |
+| **Docker Container** | Celah keamanan (vulnerabilities) sistem operasi di _image_ | Integrasi **Trivy Image Scanner** pada CI workflow untuk memindai OS/library di backend dan menghentikan rilis jika ditemukan celah level `HIGH` atau `CRITICAL`. |
+| **Stateless Tweets** | Pelanggaran privasi / memori server penuh | **Raw tweets** tidak disimpan ke Firestore ataupun dikirim ke LLM OpenRouter. Data hanya hidup sementara di memori selama kalkulasi backend baru dijalankan, lalu langsung dibersihkan. |
+| **Eksploitasi API / DDOS** | Pengurasan kuota token OpenRouter & Scraping | Implementasi rate limiting lokal berbasis alamat IP. Maksimal 5 permintaan sukses per menit per alamat IP untuk frontend. |
+| **Manipulasi Skor** | Penilaian bias atau salah diagnosis | Penerapan logika **Anti-False-Positive Reducers** secara permanen. Pengurangan skor otomatis jika variansi semantik tinggi, total tweet harian kecil, atau aktivitas interaksi minim. |
+
+---
 
 ## Instalasi & Cara Menjalankan
 

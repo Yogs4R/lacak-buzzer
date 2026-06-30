@@ -84,3 +84,13 @@ cd backend
 # Jalankan seluruh test suite
 python -m pytest
 ```
+
+---
+
+## Pemindaian Keamanan & Kontainerisasi
+
+Backend proyek ini telah dilengkapi dengan standar keamanan industri:
+- **Dockerfile**: Menggunakan image base `python:3.12-slim` untuk mengurangi permukaan serangan (attack surface) kontainer, berjalan di bawah non-root user `user` (uid 1000) untuk membatasi hak akses.
+- **Trivy Scanner**: Dijalankan secara otomatis melalui alur kerja CI (`advanced-security.yml`) di setiap push dan pull request ke cabang `main` untuk mendeteksi kerentanan kritis (Critical/High CVEs) pada dependensi OS dan pustaka Python.
+- **Gitleaks**: Memindai seluruh riwayat komit untuk memastikan tidak ada kunci API (Firebase, OpenRouter) yang bocor di repositori publik.
+
