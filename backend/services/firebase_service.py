@@ -3,6 +3,7 @@ Service untuk interaksi dengan Firebase Firestore (Riwayat Pemindaian, Statistik
 """
 import os
 import time
+from typing import Optional, List
 import firebase_admin
 from firebase_admin import credentials, firestore
 
@@ -77,7 +78,7 @@ def get_db():
     return _db
 
 
-def save_scan_history(username: str, score: int, risk_label: str, full_report: dict):
+def save_scan_history(username: str, score: int, risk_label: str, full_report: dict, logs: Optional[List[str]] = None):
     """Menyimpan riwayat pemindaian ke Firestore dan memperbarui global_stats secara atomik."""
     db = get_db()
     if db is None:
@@ -87,14 +88,17 @@ def save_scan_history(username: str, score: int, risk_label: str, full_report: d
     try:
         # 1. Simpan data ke koleksi scan_history dengan username_lower untuk pencarian case-insensitive
         doc_ref = db.collection("scan_history").document()
-        doc_ref.set({
+        doc_data = {
             "username": username,
             "username_lower": username.lower(),
             "score": score,
             "risk_label": risk_label,
             "full_report": full_report,
             "created_at": firestore.SERVER_TIMESTAMP
-        })
+        }
+        if logs is not None:
+            doc_data["logs"] = logs
+        doc_ref.set(doc_data)
         print(f"✅ Riwayat pemindaian untuk @{username} berhasil disimpan ke Firestore.")
 
         # 2. Perbarui global_stats secara atomik

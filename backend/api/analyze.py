@@ -43,9 +43,21 @@ def normalize_username(target: str) -> str:
 @router.post("/analyze", response_model=AnalysisResponse)
 async def analyze_account(req: AnalysisRequest, request: Request):
     """Endpoint utama untuk memproses analisis profil secara lengkap."""
+    execution_logs = []
+    import datetime
+    
+    def log_step(msg: str):
+        timestamp = datetime.datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        formatted_msg = f"[{timestamp}] {msg}"
+        print(formatted_msg)
+        execution_logs.append(formatted_msg)
+
     # 1. Normalisasi target username
     target = normalize_username(req.target)
+    log_step(f"Memulai analisis akun @{target} | Source: {req.source} | Limit target: {req.tweet_limit}")
+    
     if not target:
+        log_step("Error: Username target kosong.")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -60,6 +72,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         identifier = request.client.host if request.client else "127.0.0.1"
     elif req.source == "x_bot":
         if not req.requester:
+            log_step("Error: Identitas requester bot kosong.")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
@@ -68,6 +81,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
                 }
             )
         identifier = req.requester
+    log_step(f"Identifier rate limit: {identifier}")
 
     # 3. Pengecekan rate limit sebelum memproses (fail early)
     limit_message = check_rate_limit(
@@ -77,6 +91,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         mention_id=req.mention_id
     )
     if limit_message:
+        log_step(f"Rate limit terlampaui untuk {req.source} ({identifier}). Pesan: {limit_message}")
         return JSONResponse(
             status_code=status.HTTP_400_BAD_REQUEST,
             content={
@@ -84,13 +99,15 @@ async def analyze_account(req: AnalysisRequest, request: Request):
                 "message": limit_message
             }
         )
+    log_step("Pengecekan rate limit lolos.")
 
     # 4. Melakukan scraping dengan twscrape
+    log_step(f"Memulai scraping tweet untuk @{target} dengan twscrape...")
     try:
         scraped_data = await scrape_tweets(target, limit=req.tweet_limit)
     except ValueError as e:
         import traceback
-        print(f"ValueError during scrape_tweets: {e}")
+        log_step(f"ValueError saat scraping: {e}")
         traceback.print_exc()
         err_type = e.args[0] if e.args else ""
         if err_type == "account_not_found":
@@ -111,6 +128,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             )
         elif err_type == "insufficient_data":
             tweet_count = e.args[1] if len(e.args) > 1 else 0
+            log_step(f"Data tidak cukup. Hanya ditemukan {tweet_count} tweet.")
             return JSONResponse(
                 status_code=status.HTTP_400_BAD_REQUEST,
                 content={
@@ -129,7 +147,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             )
     except Exception as e:
         import traceback
-        print(f"Exception during scrape_tweets: {e}")
+        log_step(f"Exception saat scraping: {e}")
         traceback.print_exc()
         err_msg = str(e).lower()
         if "rate limit" in err_msg or "too many requests" in err_msg:
@@ -153,19 +171,67 @@ async def analyze_account(req: AnalysisRequest, request: Request):
     profile_data = scraped_data["profile"]
     tweets = scraped_data["tweets"]
     tweet_count = len(tweets)
+    log_step(f"Scraping selesai. Mengumpulkan {tweet_count} tweet untuk dianalisis.")
 
+    log_step("Mengekstrak fitur perilaku dari tweet...")
     features = extract_features(profile_data, tweets)
+    
+    log_step("Hasil ekstraksi fitur mentah (raw features):")
+    log_step(f"  - semantic_similarity: {features.get('semantic_similarity', 0.0):.4f}")
+    log_step(f"  - avg_hashtags_per_post: {features.get('avg_hashtags_per_post', 0.0):.4f}")
+    log_step(f"  - posts_per_day: {features.get('posts_per_day', 0.0):.4f}")
+    log_step(f"  - url_ratio: {features.get('url_ratio', 0.0):.4f}")
+    log_step(f"  - photo_ratio: {features.get('photo_ratio', 0.0):.4f}")
+    log_step(f"  - mention_ratio: {features.get('mention_ratio', 0.0):.4f}")
+    log_step(f"  - reply_ratio: {features.get('reply_ratio', 0.0):.4f}")
+    log_step(f"  - account_age_days: {features.get('account_age_days', 0.0):.1f}")
+    log_step(f"  - bio_is_empty: {features.get('bio_is_empty', False)}")
+    log_step(f"  - posting_entropy: {features.get('posting_entropy', 0.0):.4f}")
 
     # 6. Perhitungan skor dan metrik
+    log_step("Mulai perhitungan skor risiko...")
     score = calculate_score(features)
     risk_band = get_risk_band(score)
     confidence = get_confidence(tweet_count)
     normalized_metrics = normalize_metrics(features)
 
+    log_step("Hasil standarisasi metrik (skor 0-100):")
+    for k, v in normalized_metrics.items():
+        log_step(f"  - {k}: {v}/100")
+
+    # Log langkah perhitungan kotor
+    weighted_score = (
+        normalized_metrics.get('semantic_similarity', 0) * 0.30
+        + normalized_metrics.get('hashtag_density', 0) * 0.20
+        + normalized_metrics.get('activity_intensity', 0) * 0.15
+        + normalized_metrics.get('media_url_ratio', 0) * 0.10
+        + normalized_metrics.get('interaction_behavior', 0) * 0.10
+        + normalized_metrics.get('profile_risk', 0) * 0.10
+        + normalized_metrics.get('posting_interval_regularity', 0) * 0.05
+    )
+    log_step(f"Skor kotor (sebelum reduksi): {weighted_score:.2f}/100")
+
+    # Log reducers yang diterapkan
+    sem_sim = features.get('semantic_similarity', 0.0)
+    diversity = 1 - sem_sim
+    if diversity > 0.6:
+        log_step(f"Reducer keragaman aktif (diversity={diversity:.2f} > 0.6): skor dikalikan 0.7")
+    posts_day = features.get('posts_per_day', 0.0)
+    if posts_day < 5:
+        log_step(f"Reducer aktivitas rendah aktif (posts/day={posts_day:.2f} < 5): skor dikalikan 0.8")
+    rep_ratio = features.get('reply_ratio', 0.0)
+    ment_ratio = features.get('mention_ratio', 0.0)
+    if rep_ratio < 0.3 and ment_ratio < 0.3:
+        log_step(f"Reducer pola interaksi rendah aktif (reply_ratio={rep_ratio:.2f}, mention_ratio={ment_ratio:.2f} < 0.3): skor dikalikan 0.85")
+
+    log_step(f"Skor bersih akhir (dibulatkan): {score}/100 | Kategori: {risk_band} | Kepercayaan: {confidence}")
+
     # 7. Pembuatan sinyal perilaku
     signals = generate_signals(normalized_metrics)
+    log_step(f"Sinyal perilaku teridentifikasi: {', '.join(signals)}")
 
     # 8. Pembuatan penjelasan via OpenRouter atau fallback
+    log_step("Membuat penjelasan analisis via OpenRouter...")
     explanation = await generate_explanation(
         score=score,
         risk_band=risk_band,
@@ -174,9 +240,11 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         metrics=normalized_metrics,
         signals=signals,
     )
+    log_step("Penjelasan analisis berhasil dibuat.")
 
     # Simpan riwayat pemindaian ke Firebase Firestore
     try:
+        log_step("Menyimpan riwayat pemindaian dan logs ke Firebase Firestore...")
         from services.firebase_service import save_scan_history
         full_report = {
             "target": target,
@@ -193,10 +261,12 @@ async def analyze_account(req: AnalysisRequest, request: Request):
             username=target,
             score=score,
             risk_label=risk_band,
-            full_report=full_report
+            full_report=full_report,
+            logs=execution_logs
         )
+        log_step("Penyimpanan Firestore sukses.")
     except Exception as e:
-        print(f"⚠️ Gagal menyimpan riwayat pemindaian ke Firestore: {e}")
+        log_step(f"Gagal menyimpan riwayat ke Firestore: {e}")
 
     # 9. Peningkatan counter rate limit jika sukses
     increment_rate_limit(
@@ -205,6 +275,7 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         target=target,
         mention_id=req.mention_id
     )
+    log_step("Counter rate limit berhasil ditambahkan.")
 
     # 10. Pengembalian respons analisis
     return AnalysisResponse(
