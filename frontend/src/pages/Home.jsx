@@ -66,7 +66,14 @@ function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
           )}
         </div>
       ) : (
-        <p className="text-xs text-mutedText">Memuat data...</p>
+        <div className="flex flex-col gap-3 flex-1 mt-2">
+          {[...Array(5)].map((_, i) => (
+            <div key={i} className="flex justify-between items-center border-b border-borderCustom/30 pb-2 last:border-0 last:pb-0 animate-pulse">
+              <div className="h-3 bg-[#2a2a2a] rounded w-24"></div>
+              <div className="h-4 bg-[#2a2a2a] rounded w-8"></div>
+            </div>
+          ))}
+        </div>
       )}
     </div>
   );
@@ -420,7 +427,18 @@ export default function Home() {
                     </div>
                   </div>
                 ) : (
-                  <p className="text-xs text-mutedText">Memuat statistik...</p>
+                  <div className="flex flex-col gap-4 mt-2 animate-pulse flex-1">
+                    {[...Array(4)].map((_, i) => (
+                      <div key={i} className="flex justify-between items-center border-b border-borderCustom/50 pb-2">
+                        <div className="h-3 bg-[#2a2a2a] rounded w-16"></div>
+                        <div className="h-3 bg-[#2a2a2a] rounded w-12"></div>
+                      </div>
+                    ))}
+                    <div className="flex justify-between items-center pt-2 mt-auto border-t border-borderCustom">
+                      <div className="h-4 bg-[#2a2a2a] rounded w-12"></div>
+                      <div className="h-4 bg-[#2a2a2a] rounded w-16"></div>
+                    </div>
+                  </div>
                 )}
               </div>
 
