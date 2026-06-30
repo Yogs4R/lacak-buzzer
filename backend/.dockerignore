@@ -1,0 +1,26 @@
+# Ignore Python virtual environment and cache
+venv/
+.venv/
+env/
+__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.pytest_cache/
+
+# Ignore twscrape database and login credentials
+accounts.db
+accounts.txt
+twitter_accounts.json
+inject.py
+inject_2.py
+
+# Ignore local rate limit JSON data (Hugging Face starts fresh)
+data/*.json
+
+# Ignore Git files
+.git
+.gitignore
+
+# Ignore tests (optional, to keep production image minimal)
+tests/
