@@ -161,13 +161,14 @@ async def dry_run_mention(
 
 
 def build_arg_parser() -> argparse.ArgumentParser:
-    parser = argparse.ArgumentParser(description="X bot dry-run helper.")
+    parser = argparse.ArgumentParser(description="X bot helper.")
     parser.add_argument("--dry-run", action="store_true")
-    parser.add_argument("--text", required=True)
+    parser.add_argument("--text", help="Required for dry-run mode")
     parser.add_argument("--bot-username", required=True)
-    parser.add_argument("--requester", required=True)
-    parser.add_argument("--mention-id", required=True)
+    parser.add_argument("--requester", help="Required for dry-run mode")
+    parser.add_argument("--mention-id", help="Required for dry-run mode")
     parser.add_argument("--base-url", required=True)
+    parser.add_argument("--poll-interval", type=int, default=60)
     return parser
 
 
@@ -175,23 +176,113 @@ async def main(argv=None) -> int:
     parser = build_arg_parser()
     args = parser.parse_args(argv)
 
-    if not args.dry_run:
-        parser.error("Only --dry-run is supported. Live X posting is disabled.")
+    if args.dry_run:
+        if not (args.text and args.requester and args.mention_id):
+            parser.error("Arguments --text, --requester, and --mention-id are required for dry-run.")
+        output = await dry_run_mention(
+            text=args.text,
+            bot_username=args.bot_username,
+            requester_username=args.requester,
+            mention_id=args.mention_id,
+            base_url=args.base_url,
+        )
+        print(output)
+        return 0
+    else:
+        await start_bot(
+            base_url=args.base_url,
+            bot_username=args.bot_username,
+            poll_interval=args.poll_interval
+        )
+        return 0
 
-    output = await dry_run_mention(
-        text=args.text,
-        bot_username=args.bot_username,
-        requester_username=args.requester,
-        mention_id=args.mention_id,
-        base_url=args.base_url,
-    )
-    print(output)
-    return 0
 
+async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
+    """Memulai loop polling mention Twitter/X dan membalas analisis secara otomatis."""
+    import time
+    import tweepy
+    from twscrape import API, gather
+    from services.init_db import init_twitter_db
+    import os
 
-async def start_bot():
-    """Placeholder: live X polling/posting requires explicit approval."""
-    pass
+    print(f"🚀 X Bot aktif! Memantau mention untuk @{bot_username}...")
+    print(f"   Backend URL: {base_url}")
+    print(f"   Interval polling: {poll_interval} detik")
+
+    # Inisialisasi basis data Twitter scraper di runtime (scraping account)
+    init_twitter_db()
+    scraper_api = API()
+
+    # Inisialisasi client API v2 Tweepy untuk memposting balasan (Free tier)
+    consumer_key = os.getenv("X_CONSUMER_KEY")
+    consumer_secret = os.getenv("X_CONSUMER_SECRET")
+    access_token = os.getenv("X_ACCESS_TOKEN")
+    access_token_secret = os.getenv("X_ACCESS_TOKEN_SECRET")
+
+    tweepy_client = None
+    if consumer_key and consumer_secret and access_token and access_token_secret:
+        try:
+            tweepy_client = tweepy.Client(
+                consumer_key=consumer_key,
+                consumer_secret=consumer_secret,
+                access_token=access_token,
+                access_token_secret=access_token_secret
+            )
+            print("✅ Tweepy Client (X API v2) terinisialisasi untuk memposting balasan.")
+        except Exception as e:
+            print(f"❌ Gagal menginisialisasi Tweepy Client: {e}")
+    else:
+        print("⚠️ Kredensial X API v2 (X_CONSUMER_KEY, dsb.) tidak lengkap. Bot akan berjalan dalam mode baca-saja (tidak bisa memposting balasan).")
+
+    while True:
+        try:
+            print(f"\n🔍 [{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
+            
+            # Cari mention bot di Twitter/X menggunakan twscrape search
+            query = f"@{bot_username}"
+            raw_tweets = await gather(scraper_api.search(query, limit=20))
+            
+            print(f"   Ditemukan {len(raw_tweets)} tweet yang me-mention @{bot_username}.")
+
+            for t in raw_tweets:
+                mention_id = str(t.id)
+                text = t.rawContent
+                requester = t.user.username
+
+                # Proses mention teks untuk melihat apakah ada target analisis valid
+                reply_text = await process_mention_text(
+                    text=text,
+                    bot_username=bot_username,
+                    requester_username=requester,
+                    mention_id=mention_id,
+                    base_url=base_url
+                )
+
+                if reply_text:
+                    print(f"🎯 Memproses mention dari @{requester} (ID: {mention_id})")
+                    print(f"   Isi tweet: \"{text}\"")
+                    print(f"   Draft Balasan:\n{reply_text}")
+
+                    if tweepy_client:
+                        try:
+                            # Menggunakan API v2 create_tweet untuk reply
+                            tweepy_client.create_tweet(
+                                text=reply_text,
+                                in_reply_to_tweet_id=int(mention_id)
+                            )
+                            print(f"   ✅ Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
+                        except Exception as e:
+                            print(f"   ❌ Gagal mengirim balasan ke X/Twitter: {e}")
+                    else:
+                        print("   ⚠️ Balasan tidak diposting (karena kredensial API kosong atau salah).")
+                else:
+                    # Mengabaikan mention yang tidak valid
+                    pass
+
+        except Exception as e:
+            print(f"❌ Error dalam polling loop: {e}")
+
+        await asyncio.sleep(poll_interval)
 
 
 if __name__ == "__main__":

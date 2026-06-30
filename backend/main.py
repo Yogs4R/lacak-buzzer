@@ -36,6 +36,20 @@ async def lifespan(app: FastAPI):
     except Exception as e:
         print(f"⚠️ Gagal menginisialisasi Firebase saat startup: {e}")
         
+    # Jalankan X Bot sebagai background task jika X_BOT_USERNAME didefinisikan
+    bot_username = os.getenv("X_BOT_USERNAME")
+    if bot_username:
+        import asyncio
+        from bot.x_bot import start_bot
+        asyncio.create_task(
+            start_bot(
+                base_url="http://localhost:7860",
+                bot_username=bot_username,
+                poll_interval=int(os.getenv("X_BOT_POLL_INTERVAL", "60"))
+            )
+        )
+        print(f"🤖 [Startup] X Bot background task dimulai untuk @{bot_username}")
+        
     yield
 
 from fastapi.middleware.cors import CORSMiddleware
