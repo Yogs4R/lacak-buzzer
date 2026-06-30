@@ -21,7 +21,7 @@ jobs:
       # Reading the changelog configuration and generating the changelog based on commit messages
       - name: Build Changelog
         id: build_changelog
-        uses: mikepenz/release-changelog-builder-action@v5
+        uses: mikepenz/release-changelog-builder-action@v6
         with:
           configuration: ".github/changelog-config.json"
           mode: "COMMIT" # Generate changelog based on commit messages
