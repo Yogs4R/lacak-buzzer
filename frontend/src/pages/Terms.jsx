@@ -3,6 +3,7 @@ import { useSEO } from '../hooks/useSEO';
 
 export default function Terms() {
   useSEO({
+    title: 'Lacak Buzzer | Terms',
     canonical: 'https://lacakbuzzer.web.id/terms',
     schema: {
       '@context': 'https://schema.org',

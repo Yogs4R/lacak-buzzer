@@ -3,6 +3,7 @@ import { useSEO } from '../hooks/useSEO';
 
 export default function Privacy() {
   useSEO({
+    title: 'Lacak Buzzer | Privacy',
     canonical: 'https://lacakbuzzer.web.id/privacy',
     schema: {
       '@context': 'https://schema.org',

@@ -5,11 +5,18 @@ import { useEffect } from 'react';
  * and updates <link rel="canonical"> for GEO & SEO.
  *
  * @param {Object} options
+ * @param {string} options.title      - Title for this page
  * @param {string} options.canonical  - Canonical URL for this page
  * @param {Object|Object[]} options.schema - JSON-LD schema object(s) to inject
  */
-export function useSEO({ canonical, schema }) {
+export function useSEO({ title, canonical, schema }) {
   useEffect(() => {
+    // ── Title ────────────────────────────────────────────────────
+    const originalTitle = document.title;
+    if (title) {
+      document.title = title;
+    }
+
     // ── Canonical ────────────────────────────────────────────────
     let canonicalEl = document.querySelector('link[rel="canonical"]');
     if (canonicalEl && canonical) {
@@ -33,11 +40,14 @@ export function useSEO({ canonical, schema }) {
 
     // Cleanup when route changes
     return () => {
+      if (title) {
+        document.title = 'Lacak Buzzer | Analisis Akun X/Twitter'; // Fallback default
+      }
       injected.forEach((el) => el.remove());
       // Restore canonical to root when leaving a sub-page
       if (canonicalEl) {
         canonicalEl.setAttribute('href', 'https://lacakbuzzer.web.id/');
       }
     };
-  }, [canonical, schema]);
+  }, [title, canonical, schema]);
 }

@@ -13,6 +13,7 @@ export default function About() {
   const [scannedCount, setScannedCount] = useState(0);
 
   useSEO({
+    title: 'Lacak Buzzer | About',
     canonical: 'https://lacakbuzzer.web.id/about',
     schema: {
       '@context': 'https://schema.org',

@@ -68,6 +68,7 @@ export default function FAQ() {
   ];
 
   useSEO({
+    title: 'Lacak Buzzer | FAQ',
     canonical: 'https://lacakbuzzer.web.id/faq',
     schema: {
       '@context': 'https://schema.org',
