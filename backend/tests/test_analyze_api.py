@@ -13,7 +13,8 @@ client = TestClient(app)
 def setup_test_limits(tmp_path):
     # Temp file untuk rate limits selama testing API
     test_file = tmp_path / "rate_limits_api_test.json"
-    with patch("services.rate_limits.LIMITS_FILE", str(test_file)):
+    with patch("services.rate_limits.LIMITS_FILE", str(test_file)), \
+         patch("services.firebase_service.save_scan_history"):
         yield test_file
 
 

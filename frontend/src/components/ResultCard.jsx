@@ -1,3 +1,5 @@
+import { useState } from 'react';
+import TweetDetailsModal from './TweetDetailsModal';
 
 // Safety audit: warna Ekstrem menggunakan merah asli (#ef4444) sesuai instruksi.
 const RISK_BAND_COLOR = {
@@ -47,7 +49,7 @@ function ScoreDisplay({ score, riskBand }) {
   );
 }
 
-function MetricBar({ label, value }) {
+function MetricBar({ label, value, onViewDetails }) {
   const color =
     value >= 80
       ? '#ef4444' // Merah asli
@@ -73,6 +75,14 @@ function MetricBar({ label, value }) {
             backgroundColor: color,
           }}
         />
+      </div>
+      <div className="flex justify-end mt-1">
+        <button
+          onClick={onViewDetails}
+          className="text-[10px] uppercase tracking-wider text-gray-500 hover:text-white transition-colors"
+        >
+          Lihat Detail →
+        </button>
       </div>
     </div>
   );
@@ -242,7 +252,10 @@ export default function ResultCard({ data, onReset }) {
     signals = [],
     explanation,
     caveat,
+    raw_tweets,
   } = data;
+
+  const [selectedMetric, setSelectedMetric] = useState(null);
 
   const isLowConfidence = confidence === 'rendah';
 
@@ -304,7 +317,11 @@ export default function ResultCard({ data, onReset }) {
                   key={key}
                   className="bg-canvas border border-borderCustom rounded-btn p-3.5"
                 >
-                  <MetricBar label={METRIC_LABELS[key] || key} value={value} />
+                  <MetricBar 
+                    label={METRIC_LABELS[key] || key} 
+                    value={value}
+                    onViewDetails={() => setSelectedMetric({ name: METRIC_LABELS[key] || key, score: value })} 
+                  />
                 </div>
               ))}
             </div>
@@ -362,6 +379,15 @@ export default function ResultCard({ data, onReset }) {
           </button>
         </div>
       )}
+
+      {/* Details Modal */}
+      <TweetDetailsModal 
+        isOpen={selectedMetric !== null}
+        onClose={() => setSelectedMetric(null)}
+        metricName={selectedMetric?.name}
+        metricScore={selectedMetric?.score}
+        tweets={raw_tweets}
+      />
     </section>
   );
 }

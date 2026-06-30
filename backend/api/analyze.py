@@ -287,5 +287,6 @@ async def analyze_account(req: AnalysisRequest, request: Request):
         metrics=AnalysisMetrics(**normalized_metrics),
         signals=signals,
         explanation=explanation,
-        caveat="Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu."
+        caveat="Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.",
+        raw_tweets=scraped_data["tweets"]
     )

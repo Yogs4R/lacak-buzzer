@@ -34,6 +34,8 @@ async def scrape_tweets(username: str, limit: int = 100):
     tweets_data = []
     for t in raw_tweets:
         tweets_data.append({
+            "id": getattr(t, 'id', None) or t.id_str, # twscrape usually has t.id
+            "url": t.url if hasattr(t, 'url') else f"https://x.com/{user_info.username}/status/{t.id}",
             "text": t.rawContent,
             "created_at": str(t.date),
             "hashtags": [h for h in getattr(t, 'hashtags', [])] if hasattr(t, 'hashtags') else [],

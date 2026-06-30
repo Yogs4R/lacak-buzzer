@@ -151,18 +151,21 @@ Low-data behavior:
 
 ## Storage Rules
 
-The system is stateless for analysis data.
+The system is allowed to store analysis history to support the Dashboard leaderboard.
 
-Do not store:
-
-- raw tweets
-- profile data
-- usernames from analysis history
+Allowed to store in Database/Firestore:
 - scores
 - explanations
-- embeddings
 - analysis results
-- request history
+- calculated metrics
+- username
+- risk band
+- confidence
+
+Do not store:
+- raw tweets (Strictly forbidden due to data volume and privacy)
+- profile data (bio, etc)
+- embeddings
 
 Allowed exception:
 

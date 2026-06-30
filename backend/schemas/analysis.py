@@ -30,6 +30,7 @@ class AnalysisResponse(BaseModel):
     signals: List[str]
     explanation: str
     caveat: str
+    raw_tweets: Optional[list] = None
 
 class ErrorResponse(BaseModel):
     error: str
