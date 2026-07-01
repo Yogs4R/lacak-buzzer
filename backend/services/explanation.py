@@ -44,13 +44,9 @@ async def generate_explanation(
         prompt += f"  * {k}: {v}/100\n"
 
     prompt += (
-        "\nBerikan analisis yang sangat singkat, padat, dan ringkas dalam Bahasa Indonesia (maksimal 120-150 kata). "
-        "Format penjelasan Anda wajib menggunakan paragraf pengantar singkat, diikuti dengan daftar poin penjelasan menggunakan karakter bullet point unicode (•) di awal baris untuk setiap metrik penting. "
-        "PENTING: Pastikan setiap bullet point berada pada baris baru yang terpisah (jangan sampai ada 2 bullet point dalam satu baris). "
-        "Jangan gunakan format markdown (jangan gunakan cetak tebal dengan **, jangan gunakan tanda bintang * atau strip - untuk poin). "
-        "Jelaskan arti dari metrik tersebut secara netral, objektif, dan profesional. "
-        "PENTING: Jangan membuat tuduhan bahwa akun tersebut adalah bot, buzzer, palsu, berbayar, atau terkoordinasi secara jahat. "
-        "Pernyataan harus berupa indikator risiko berbasis pola perilaku saja.\n\n"
+        "\nBerikan penjelasan analisis yang sangat singkat, padat, dan ringkas dalam Bahasa Indonesia (maksimal 1 paragraf, sekitar 50-80 kata). "
+        "Jangan gunakan format markdown (seperti cetak tebal ** atau poin list). Tuliskan dalam bentuk paragraf mengalir yang merangkum sinyal perilaku utama dan metrik secara netral, objektif, dan profesional. "
+        "PENTING: Jangan membuat tuduhan bahwa akun tersebut adalah bot, buzzer, palsu, berbayar, atau terkoordinasi secara jahat. Pernyataan harus berupa indikator risiko berbasis pola perilaku saja.\n\n"
         "Wajib sertakan kalimat caveat berikut di bagian paling akhir penjelasan Anda:\n"
         "Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu."
     )
