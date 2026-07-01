@@ -19,6 +19,16 @@ const METRIC_LABELS = {
   posting_interval_regularity: 'Regulasi Interval Posting',
 };
 
+const METRIC_DESCRIPTIONS = {
+  semantic_similarity: 'Mengukur seberapa mirip konten tweet satu sama lain. Skor tinggi menunjukkan pola pesan yang diulang-ulang secara identik atau berupa template.',
+  hashtag_density: 'Menghitung rata-rata penggunaan hashtag per tweet. Kepadatan tinggi sering dikaitkan dengan upaya amplifikasi topik buatan secara berlebihan.',
+  activity_intensity: 'Mengukur frekuensi posting harian. Intensitas yang tidak wajar mengindikasikan otomatisasi atau pengerahan akun secara masif.',
+  media_url_ratio: 'Melihat persentase tweet yang mengandung media atau tautan (URL). Buzzer seringkali membagikan tautan/media yang sama secara berulang.',
+  interaction_behavior: 'Menganalisis rasio mention dan reply. Pola interaksi spam atau reply serentak akan meningkatkan skor risiko ini.',
+  profile_risk: 'Menilai kelengkapan dan usia profil. Akun baru dengan bio kosong atau tidak terverifikasi memiliki risiko bot/buzzer yang lebih tinggi.',
+  posting_interval_regularity: 'Mengukur keteraturan jarak waktu antar postingan. Jarak yang terlalu rapi atau konstan mengindikasikan penggunaan tools penjadwalan/bot.',
+};
+
 function getRiskBandColor(riskBand) {
   return RISK_BAND_COLOR[riskBand] || '#8a8a8a';
 }
@@ -320,7 +330,7 @@ export default function ResultCard({ data, onReset }) {
                   <MetricBar 
                     label={METRIC_LABELS[key] || key} 
                     value={value}
-                    onViewDetails={() => setSelectedMetric({ name: METRIC_LABELS[key] || key, score: value })} 
+                    onViewDetails={() => setSelectedMetric({ name: METRIC_LABELS[key] || key, score: value, description: METRIC_DESCRIPTIONS[key] })} 
                   />
                 </div>
               ))}
@@ -386,6 +396,7 @@ export default function ResultCard({ data, onReset }) {
         onClose={() => setSelectedMetric(null)}
         metricName={selectedMetric?.name}
         metricScore={selectedMetric?.score}
+        metricDescription={selectedMetric?.description}
         tweets={raw_tweets}
       />
     </section>
