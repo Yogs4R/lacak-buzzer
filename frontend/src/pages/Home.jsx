@@ -79,6 +79,92 @@ function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
   );
 }
 
+const SAFE_FALLBACK_CONTRIBUTORS = [
+  { login: 'Yogs4R', html_url: 'https://github.com/Yogs4R', avatar_url: 'https://github.com/Yogs4R.png' },
+  { login: 'luckywtrike-rgb', html_url: 'https://github.com/luckywtrike-rgb', avatar_url: 'https://github.com/luckywtrike-rgb.png' },
+  { login: 'dandy63609', html_url: 'https://github.com/dandy63609', avatar_url: 'https://github.com/dandy63609.png' },
+  { login: 'naufalid755', html_url: 'https://github.com/naufalid755', avatar_url: 'https://github.com/naufalid755.png' }
+];
+
+const sanitizeContributors = (data) => {
+  if (!Array.isArray(data)) return SAFE_FALLBACK_CONTRIBUTORS;
+  
+  const githubUserRegex = /^[a-zA-Z0-9-]+$/;
+  
+  const sanitized = data
+    .filter(item => {
+      if (!item || typeof item !== 'object') return false;
+      const login = item.login;
+      if (!login || typeof login !== 'string') return false;
+      
+      // Exclude bots
+      if (login.toLowerCase().includes('[bot]') || item.type === 'Bot') return false;
+      
+      // Validate characters of username (Anti-XSS)
+      if (!githubUserRegex.test(login)) return false;
+      
+      // Validate Profile URL (Anti-Link Injection)
+      const htmlUrl = item.html_url;
+      if (!htmlUrl || typeof htmlUrl !== 'string' || !htmlUrl.startsWith('https://github.com/')) return false;
+      
+      // Validate Avatar URL
+      const avatarUrl = item.avatar_url;
+      if (!avatarUrl || typeof avatarUrl !== 'string') return false;
+      const isSecureAvatar = avatarUrl.startsWith('https://avatars.githubusercontent.com/') || avatarUrl.startsWith('https://github.com/');
+      if (!isSecureAvatar) return false;
+      
+      return true;
+    })
+    .map(item => ({
+      login: item.login,
+      html_url: item.html_url,
+      avatar_url: item.avatar_url
+    }));
+
+  return sanitized.length > 0 ? sanitized : SAFE_FALLBACK_CONTRIBUTORS;
+};
+
+function ContributorsSection({ contributors }) {
+  if (!contributors || contributors.length === 0) return null;
+  
+  return (
+    <section className="animate-fade-in-up delay-200 w-full max-w-[900px] mx-auto mt-16 mb-8 text-center border-t border-borderCustom/30 pt-12">
+      <p className="eyebrow mb-3">KONTRIBUTOR</p>
+      <h2 className="text-[24px] font-bold text-ink mb-3">
+        Terima Kasih kepada Kontributor Hebat Kami
+      </h2>
+      <p className="text-[14px] text-mutedText max-w-[550px] mx-auto mb-8 leading-relaxed">
+        Proyek open-source ini dapat terus berjalan berkat dedikasi dan kontribusi nyata dari rekan-rekan pengembang berikut.
+      </p>
+      
+      <div className="flex flex-wrap justify-center gap-4">
+        {contributors.map((c) => (
+          <a
+            key={c.login}
+            href={c.html_url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="card p-4 flex flex-col items-center justify-center gap-3 hover:border-[#f97316] hover:scale-105 transition-all duration-300 w-28 h-28 cursor-pointer group"
+          >
+            <img
+              src={c.avatar_url}
+              alt={c.login}
+              className="w-12 h-12 rounded-full border border-borderCustom group-hover:border-[#f97316] transition-colors object-cover"
+              onError={(e) => {
+                e.target.onerror = null;
+                e.target.src = `https://github.com/${c.login}.png`;
+              }}
+            />
+            <span className="font-mono text-[12px] text-mutedText group-hover:text-ink transition-colors truncate w-full px-1">
+              @{c.login}
+            </span>
+          </a>
+        ))}
+      </div>
+    </section>
+  );
+}
+
 function HeroSection({ scannedCount }) {
   return (
     <section className="hero-centered animate-fade-in-up">
@@ -180,6 +266,7 @@ export default function Home() {
 
   const [globalStats, setGlobalStats] = useState(null);
   const [leaderboard, setLeaderboard] = useState(null);
+  const [contributors, setContributors] = useState(SAFE_FALLBACK_CONTRIBUTORS);
 
   const resultsRef = useRef(null);
 
@@ -242,7 +329,7 @@ export default function Home() {
     }
   };
 
-  // Fetch global stats and leaderboard on mount
+  // Fetch global stats, leaderboard, and contributors on mount
   useEffect(() => {
     fetchStatsAndLeaderboard(false);
 
@@ -255,6 +342,24 @@ export default function Home() {
         sessionStorage.removeItem('lastAnalysisResult');
       }
     }
+
+    const fetchContributors = async () => {
+      try {
+        const res = await fetch('https://api.github.com/repos/Yogs4R/lacak-buzzer/contributors');
+        if (res.ok) {
+          const data = await res.json();
+          const cleanData = sanitizeContributors(data);
+          setContributors(cleanData);
+        } else {
+          setContributors(SAFE_FALLBACK_CONTRIBUTORS);
+        }
+      } catch (err) {
+        console.error('Gagal mengambil kontributor dari GitHub', err);
+        setContributors(SAFE_FALLBACK_CONTRIBUTORS);
+      }
+    };
+
+    fetchContributors();
   }, []);
 
   const handleAnalyze = async (target) => {
@@ -468,6 +573,10 @@ export default function Home() {
 
             </div>
           </section>
+        )}
+
+        {!isLoading && (
+          <ContributorsSection contributors={contributors} />
         )}
 
       </main>
