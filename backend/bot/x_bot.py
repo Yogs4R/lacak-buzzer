@@ -23,6 +23,7 @@ UNSAFE_ERROR_TERMS = (
 
 TWEET_MAX_CHARS = 280
 SHORT_CAVEAT = "\u26a0\ufe0f Indikator pola perilaku, bukan bukti koordinasi."
+PROMO_LINK = "\U0001f50d Cek analisis lengkap di sini:\nhttps://lacakbuzzer.web.id atau mentions @lacakbuzzer"
 
 
 def truncate_tweet(text: str, max_chars: int = TWEET_MAX_CHARS) -> str:
@@ -64,7 +65,7 @@ def format_success_reply(result: dict) -> str:
         for signal in signals:
             lines.append(f"- {signal}")
 
-    lines.extend(["", SHORT_CAVEAT])
+    lines.extend(["", SHORT_CAVEAT, "", PROMO_LINK])
 
     return truncate_tweet("\n".join(lines))
 
@@ -291,8 +292,8 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
             if last_seen_id:
                 query = f"@{bot_username} since_id:{last_seen_id}"
             else:
-                # Run pertama: batasi ke mention dalam 2x interval polling terakhir (min 2 menit)
-                since_ts = int(time.time()) - max(poll_interval * 2, 120)
+                # Run pertama: tangkap mention dalam 10x interval polling terakhir (min 10 menit)
+                since_ts = int(time.time()) - max(poll_interval * 10, 600)
                 query = f"@{bot_username} since_time:{since_ts}"
 
             # Ambil tweet terbaru yang menyebut bot (mode Latest, bukan Top/Popular)

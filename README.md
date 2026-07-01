@@ -307,8 +307,17 @@ Risiko: Tinggi | Skor: 74/100
 - Pola penggunaan tagar terlihat padat
 
 ⚠️ Indikator pola perilaku, bukan bukti koordinasi.
+
+🔍 Cek analisis lengkap & coba gratis di sini:
+https://lacakbuzzer.web.id atau mentions @lacakbuzzer
 ```
 *Catatan: Bot X membatasi panjang teks agar ketat berada di bawah batas 280 karakter Twitter/X dengan pemotongan otomatis.*
+
+### Cara Menggunakan Bot X
+> [!TIP]
+> **Cukup mention `@lacakbuzzer` beserta username target di X/Twitter!**
+> Contoh: `@lacakbuzzer analisis akun @detikcom`
+> Bot akan otomatis membalas dengan hasil analisis dalam beberapa saat.
 
 ## Catatan Keamanan
 *Skor yang dihasilkan adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.*

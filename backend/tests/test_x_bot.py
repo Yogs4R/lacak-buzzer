@@ -85,7 +85,7 @@ def test_valid_mention_calls_backend_payload():
             },
         }
     ]
-    assert "Indikator Risiko Amplifikasi Terkoordinasi: Tinggi" in reply
+    assert "Risiko: Tinggi | Skor:" in reply
 
 
 def test_invalid_mention_returns_none_without_backend_call():
@@ -140,14 +140,17 @@ def test_format_success_reply_is_short_safe_and_hides_metrics():
         }
     )
 
-    assert "Indikator Risiko Amplifikasi Terkoordinasi: Tinggi" in reply
+    assert "Risiko: Tinggi | Skor: 74/100" in reply
     assert "Skor: 74/100" in reply
     assert "Kemiripan pesan cukup tinggi" in reply
     assert "Pola penggunaan tagar terlihat padat" in reply
-    assert "Aktivitas dan interaksi terlihat intens" in reply
+    # Signal ke-3 dan ke-4 tidak ditampilkan karena dibatasi 2 sinyal
+    assert "Aktivitas dan interaksi terlihat intens" not in reply
     assert "Sinyal ekstra tidak ditampilkan" not in reply
     assert "semantic_similarity" not in reply
-    assert "bukti bahwa akun tersebut terkoordinasi" in reply
+    assert "bukan bukti koordinasi" in reply
+    assert "lacakbuzzer.web.id" in reply
+    assert len(reply) <= 280
 
 
 def test_format_error_reply_uses_safe_backend_message():
@@ -218,8 +221,9 @@ def test_dry_run_valid_mention_prints_reply_preview():
     assert "Target: detikcom" in output
     assert '"source": "x_bot"' in output
     assert "POST http://127.0.0.1:8000/api/analyze" in output
-    assert "Indikator Risiko Amplifikasi Terkoordinasi: Tinggi" in output
-    assert "bukti bahwa akun tersebut terkoordinasi" in output
+    assert "Risiko: Tinggi | Skor:" in output
+    assert "bukan bukti koordinasi" in output
+    assert "lacakbuzzer.web.id" in output
     assert "semantic_similarity" not in output
 
 
