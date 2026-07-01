@@ -301,17 +301,14 @@ npm run dev
 Jika bot diaktifkan secara mandiri dengan kredensial *cookies* yang valid, format balasan otomatis di Twitter/X adalah sebagai berikut:
 
 ```text
-Indikator Risiko Amplifikasi Terkoordinasi: Tinggi
-Skor: 74/100
+Risiko: Tinggi | Skor: 74/100
 
-Sinyal utama:
 - Kemiripan pesan cukup tinggi
 - Pola penggunaan tagar terlihat padat
-- Aktivitas dan interaksi terlihat intens
 
-Catatan: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.
+⚠️ Indikator pola perilaku, bukan bukti koordinasi.
 ```
-*Catatan: Bot X membatasi panjang teks agar tetap berada di bawah batas 280 karakter Twitter/X dan sengaja tidak menyertakan penjelasan AI panjang untuk mencegah kegagalan karakter.*
+*Catatan: Bot X membatasi panjang teks agar ketat berada di bawah batas 280 karakter Twitter/X dengan pemotongan otomatis.*
 
 ## Catatan Keamanan
 *Skor yang dihasilkan adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.*
