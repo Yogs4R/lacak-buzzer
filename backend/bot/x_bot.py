@@ -1,4 +1,4 @@
-﻿"""
+"""
 Proses utama bot X yang memantau mention dan membalas analisis.
 """
 
@@ -200,7 +200,7 @@ async def main(argv=None) -> int:
 async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
     """Memulai loop polling mention Twitter/X dan membalas analisis secara otomatis."""
     import time
-    import tweepy
+    from twikit import Client
     from twscrape import API, gather
     from services.init_db import init_twitter_db
     import os
@@ -213,30 +213,49 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
     init_twitter_db()
     scraper_api = API()
 
-    # Inisialisasi client API v2 Tweepy untuk memposting balasan (Free tier)
-    consumer_key = os.getenv("X_CONSUMER_KEY")
-    consumer_secret = os.getenv("X_CONSUMER_SECRET")
-    access_token = os.getenv("X_ACCESS_TOKEN")
-    access_token_secret = os.getenv("X_ACCESS_TOKEN_SECRET")
+    # Inisialisasi client Twikit menggunakan cookies untuk memposting balasan
+    accounts_json = os.getenv("TWITTER_ACCOUNTS_JSON")
+    auth_token = None
+    ct0 = None
 
-    tweepy_client = None
-    if consumer_key and consumer_secret and access_token and access_token_secret:
+    if accounts_json:
         try:
-            tweepy_client = tweepy.Client(
-                consumer_key=consumer_key,
-                consumer_secret=consumer_secret,
-                access_token=access_token,
-                access_token_secret=access_token_secret
-            )
-            print("Tweepy Client (X API v2) terinisialisasi untuk memposting balasan.")
+            accounts = json.loads(accounts_json)
+            for acc in accounts:
+                if acc.get("username") == bot_username:
+                    auth_token = acc.get("auth_token")
+                    ct0 = acc.get("ct0")
+                    break
         except Exception as e:
-            print(f"Gagal menginisialisasi Tweepy Client: {e}")
+            print(f"Gagal memparsing TWITTER_ACCOUNTS_JSON: {e}")
+    
+    # Fallback to direct env vars if not found in JSON
+    if not auth_token or not ct0:
+        auth_token = os.getenv("X_AUTH_TOKEN")
+        ct0 = os.getenv("X_CT0")
+
+    twikit_client = None
+    if auth_token and ct0:
+        try:
+            twikit_client = Client('en-US')
+            twikit_client.set_cookies({
+                'auth_token': auth_token,
+                'ct0': ct0
+            })
+            print("Twikit Client terinisialisasi menggunakan cookies untuk memposting balasan.")
+        except Exception as e:
+            print(f"Gagal menginisialisasi Twikit Client: {e}")
     else:
-        print("Kredensial X API v2 tidak lengkap. Bot berjalan dalam mode baca-saja.")
+        print("Kredensial X_AUTH_TOKEN dan X_CT0 tidak lengkap di .env. Bot berjalan dalam mode baca-saja.")
 
     # Exponential backoff saat terjadi error berturutan
     MAX_BACKOFF_MULTIPLIER = 8
     backoff_multiplier = 1
+
+    # Local set untuk mencegah duplikasi balasan jika rate-limit db terlambat tersinkronisasi
+    replied_mentions = set()
+
+    import random
 
     while True:
         try:
@@ -250,6 +269,9 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
 
             for t in raw_tweets:
                 mention_id = str(t.id)
+                if mention_id in replied_mentions:
+                    continue
+                
                 text = t.rawContent
                 requester = t.user.username
 
@@ -267,18 +289,30 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                     print(f"   Isi tweet: \"{text}\"")
                     print(f"   Draft Balasan:\n{reply_text}")
 
-                    if tweepy_client:
+                    if twikit_client:
                         try:
-                            # Menggunakan API v2 create_tweet untuk reply
-                            tweepy_client.create_tweet(
+                            # Anti-ban: delay acak sebelum membalas untuk mensimulasikan pengetikan (human behavior)
+                            delay = random.uniform(5.0, 12.0)
+                            print(f"   [Anti-Ban] Menunggu {delay:.1f} detik sebelum mengirim balasan...")
+                            await asyncio.sleep(delay)
+
+                            # Menggunakan twikit create_tweet untuk reply
+                            await twikit_client.create_tweet(
                                 text=reply_text,
-                                in_reply_to_tweet_id=int(mention_id)
+                                reply_to=str(mention_id)
                             )
                             print(f"   Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
+                            
+                            # Catat mention_id agar tidak dibalas ganda pada siklus berikutnya
+                            replied_mentions.add(mention_id)
+                            if len(replied_mentions) > 500:
+                                # Hindari memory leak
+                                replied_mentions = set(list(replied_mentions)[-250:])
+                                
                         except Exception as e:
                             print(f"   Gagal mengirim balasan ke X/Twitter: {e}")
                     else:
-                        print("   Balasan tidak diposting (kredensial API kosong atau salah).")
+                        print("   Balasan tidak diposting (kredensial cookies kosong).")
                 else:
                     # Mengabaikan mention yang tidak valid
                     pass
