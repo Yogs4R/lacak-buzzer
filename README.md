@@ -293,12 +293,12 @@ npm run dev
 
 ## Status X Bot & Contoh Respon
 
-> [!WARNING]
-> **Status X Bot Saat Ini: NONAKTIF / DISABLED**  
-> Per Februari 2026, Twitter/X telah **menghapus 100% Free Tier API** untuk akun developer baru dan memberlakukan skema **Pay-Per-Use (Berbayar per Tweet & Wajib Kartu Kredit)**. Demi menghindari biaya operasional tak terduga, alur polling & posting X Bot dinonaktifkan di Hugging Face Spaces (dengan mengosongkan variabel `X_BOT_USERNAME`). Kode program X bot tetap terpasang secara lengkap di repositori ini sebagai bukti implementasi programatis.
+> [!NOTE]
+> **Status X Bot Saat Ini: AKTIF / ENABLED**  
+> Menggunakan kombinasi `twscrape` dan `twikit` dengan injeksi *cookies* dari variabel environment JSON, Bot X ini dapat berjalan 100% gratis tanpa perlu berlangganan API X (Pay-Per-Use).
 
-### Format Respon X Bot (Jika Diaktifkan)
-Jika bot diaktifkan secara mandiri dengan kredensial API yang valid, format balasan otomatis di Twitter/X adalah sebagai berikut:
+### Format Respon X Bot
+Jika bot diaktifkan secara mandiri dengan kredensial *cookies* yang valid, format balasan otomatis di Twitter/X adalah sebagai berikut:
 
 ```text
 Indikator Risiko Amplifikasi Terkoordinasi: Tinggi
