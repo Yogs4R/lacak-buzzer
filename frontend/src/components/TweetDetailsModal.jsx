@@ -1,9 +1,18 @@
-import React, { useState, useMemo } from 'react';
+import React, { useState, useMemo, useEffect } from 'react';
 
 const TweetDetailsModal = ({ isOpen, onClose, metricName, metricScore, metricDescription, tweets }) => {
   const [searchQuery, setSearchQuery] = useState('');
   const [filterType, setFilterType] = useState('all');
   const [sortOrder, setSortOrder] = useState('newest');
+
+  // Reset filter state ketika modal baru dibuka
+  useEffect(() => {
+    if (isOpen) {
+      setSearchQuery('');
+      setFilterType('all');
+      setSortOrder('newest');
+    }
+  }, [isOpen]);
 
   const processedTweets = useMemo(() => {
     if (!tweets) return [];
@@ -116,7 +125,7 @@ const TweetDetailsModal = ({ isOpen, onClose, metricName, metricScore, metricDes
           ) : (
             <div className="space-y-4">
               {processedTweets.map((tweet, index) => (
-                <div key={tweet.id || index} className="p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] hover:border-[#555555] transition-colors">
+                <div key={`${tweet.id || 't'}-${index}`} className="p-4 bg-[#1a1a1a] rounded-lg border border-[#2a2a2a] hover:border-[#555555] transition-colors">
                   <div className="flex justify-between items-start mb-2">
                     <span className="text-xs text-gray-500 font-mono">
                       {new Date(tweet.created_at).toLocaleString('id-ID')}
