@@ -21,6 +21,16 @@ UNSAFE_ERROR_TERMS = (
     "/home/",
 )
 
+TWEET_MAX_CHARS = 280
+SHORT_CAVEAT = "\u26a0\ufe0f Indikator pola perilaku, bukan bukti koordinasi."
+
+
+def truncate_tweet(text: str, max_chars: int = TWEET_MAX_CHARS) -> str:
+    """Potong teks agar sesuai batas 280 karakter X/Twitter."""
+    if len(text) <= max_chars:
+        return text
+    return text[: max_chars - 3].rstrip() + "..."
+
 
 def build_analysis_payload(
     target,
@@ -39,25 +49,24 @@ def build_analysis_payload(
 
 
 def format_success_reply(result: dict) -> str:
-    """Format safe public bot reply without exposing full metric details."""
+    """Format safe public bot reply dalam batas 280 karakter X/Twitter."""
     risk_band = result.get("risk_band", "Tidak tersedia")
     score = result.get("score", 0)
-    signals = result.get("signals", [])[:3]
-    caveat = result.get("caveat", "")
+    # Batasi 2 sinyal agar cukup ruang untuk caveat dalam 280 karakter
+    signals = result.get("signals", [])[:2]
 
     lines = [
-        f"Indikator Risiko Amplifikasi Terkoordinasi: {risk_band}",
-        f"Skor: {score}/100",
+        f"Risiko: {risk_band} | Skor: {score}/100",
     ]
 
     if signals:
-        lines.extend(["", "Sinyal utama:"])
-        lines.extend(f"- {signal}" for signal in signals)
+        lines.append("")
+        for signal in signals:
+            lines.append(f"- {signal}")
 
-    if caveat:
-        lines.extend(["", f"Catatan: {caveat}"])
+    lines.extend(["", SHORT_CAVEAT])
 
-    return "\n".join(lines)
+    return truncate_tweet("\n".join(lines))
 
 
 def format_error_reply(error: dict) -> str:
@@ -216,6 +225,18 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
     db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
     scraper_api = API(db_path)
 
+    # Periksa apakah ada akun twscrape yang aktif sebelum mulai polling
+    try:
+        all_accounts = await scraper_api.pool.get_all()
+        active_count = sum(1 for a in all_accounts if a.active)
+        if active_count == 0:
+            print("\u26a0\ufe0f Tidak ada akun twscrape aktif! Pencarian mention mungkin tidak berfungsi.")
+            print("   Pastikan TWITTER_ACCOUNTS_JSON berisi credentials yang valid.")
+        else:
+            print(f"\u2705 {active_count} akun twscrape aktif dan siap digunakan untuk pencarian.")
+    except Exception as e:
+        print(f"\u26a0\ufe0f Tidak bisa memeriksa status akun twscrape: {e}")
+
     # Inisialisasi client Twikit menggunakan cookies untuk memposting balasan
     accounts_json = os.getenv("TWITTER_ACCOUNTS_JSON")
     auth_token = None
@@ -225,7 +246,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
         try:
             accounts = json.loads(accounts_json)
             for acc in accounts:
-                if acc.get("username") == bot_username:
+                if acc.get("username", "").lower() == bot_username.lower():
                     auth_token = acc.get("auth_token")
                     ct0 = acc.get("ct0")
                     break
@@ -257,6 +278,8 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
 
     # Local set untuk mencegah duplikasi balasan jika rate-limit db terlambat tersinkronisasi
     replied_mentions = set()
+    # ID tweet mention terakhir yang dilihat; digunakan untuk hanya mengambil mention baru
+    last_seen_id: str | None = None
 
     import random
 
@@ -264,11 +287,29 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
         try:
             print(f"\n[{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
 
-            # Cari mention bot di Twitter/X menggunakan twscrape search
-            query = f"@{bot_username}"
-            raw_tweets = await gather(scraper_api.search(query, limit=20))
+            # Bangun query: gunakan since_id jika sudah ada, atau since_time untuk run pertama
+            if last_seen_id:
+                query = f"@{bot_username} since_id:{last_seen_id}"
+            else:
+                # Run pertama: batasi ke mention dalam 2x interval polling terakhir (min 2 menit)
+                since_ts = int(time.time()) - max(poll_interval * 2, 120)
+                query = f"@{bot_username} since_time:{since_ts}"
 
-            print(f"   Ditemukan {len(raw_tweets)} tweet yang me-mention @{bot_username}.")
+            # Ambil tweet terbaru yang menyebut bot (mode Latest, bukan Top/Popular)
+            raw_tweets = await gather(
+                scraper_api.search(query, limit=20, kv={"product": "Latest"})
+            )
+
+            # Urutkan dari terlama ke terbaru agar diproses secara kronologis
+            raw_tweets = sorted(raw_tweets, key=lambda t: int(t.id))
+
+            # Perbarui last_seen_id ke ID tertinggi di batch ini
+            if raw_tweets:
+                candidate_id = str(max(int(t.id) for t in raw_tweets))
+                if last_seen_id is None or int(candidate_id) > int(last_seen_id):
+                    last_seen_id = candidate_id
+
+            print(f"   Ditemukan {len(raw_tweets)} mention baru untuk @{bot_username}.")
 
             for t in raw_tweets:
                 mention_id = str(t.id)
