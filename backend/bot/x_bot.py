@@ -211,7 +211,10 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
 
     # Inisialisasi basis data Twitter scraper di runtime (scraping account)
     init_twitter_db()
-    scraper_api = API()
+    
+    tws_data_dir = os.getenv("TWS_DATA_DIR", "")
+    db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
+    scraper_api = API(db_path)
 
     # Inisialisasi client Twikit menggunakan cookies untuk memposting balasan
     accounts_json = os.getenv("TWITTER_ACCOUNTS_JSON")
@@ -244,9 +247,9 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
             })
             print("Twikit Client terinisialisasi menggunakan cookies untuk memposting balasan.")
         except Exception as e:
-            print(f"Gagal menginisialisasi Twikit Client: {e}")
+            print(f"❌ Gagal menginisialisasi Twikit Client: {e}")
     else:
-        print("Kredensial X_AUTH_TOKEN dan X_CT0 tidak lengkap di .env. Bot berjalan dalam mode baca-saja.")
+        print("⚠️ Kredensial X_AUTH_TOKEN dan X_CT0 tidak lengkap di .env atau JSON. Bot berjalan dalam mode baca-saja.")
 
     # Exponential backoff saat terjadi error berturutan
     MAX_BACKOFF_MULTIPLIER = 8
