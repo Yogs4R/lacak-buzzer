@@ -123,6 +123,20 @@ def test_stats_endpoint(mock_get_stats):
     assert response.json()["total_scans"] == 100
 
 
+@patch("api.leaderboard.get_global_stats")
+def test_stats_endpoint_head(mock_get_stats):
+    mock_get_stats.return_value = {"total_scans": 100, "breakdown": {"Rendah": 100}}
+    response = client.request("HEAD", "/api/stats")
+    assert response.status_code == 200
+    assert response.content == b""
+
+
+def test_root_endpoint_head():
+    response = client.request("HEAD", "/")
+    assert response.status_code == 200
+    assert response.content == b""
+
+
 @patch("api.leaderboard.get_recent_scans")
 @patch("api.leaderboard.get_safest_accounts")
 @patch("api.leaderboard.get_riskiest_accounts")

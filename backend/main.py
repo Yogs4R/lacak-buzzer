@@ -73,7 +73,7 @@ app.add_middleware(
 app.include_router(analyze_router, prefix="/api")
 app.include_router(leaderboard_router, prefix="/api")
 
-@app.get("/")
+@app.api_route("/", methods=["GET", "HEAD"])
 def root():
     return {"status": "ok", "message": "Lacak Buzzer API running"}
 

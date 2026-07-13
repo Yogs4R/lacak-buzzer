@@ -13,7 +13,7 @@ from services.firebase_service import (
 router = APIRouter()
 
 
-@router.get("/stats")
+@router.api_route("/stats", methods=["GET", "HEAD"])
 def get_stats():
     """Mengembalikan total global pindaian akun dari Firestore."""
     return get_global_stats()
