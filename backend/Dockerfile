@@ -19,7 +19,7 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel && \
     pip install --no-cache-dir -r requirements.txt
 
 # Copy the rest of the application
