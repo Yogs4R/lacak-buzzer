@@ -19,8 +19,9 @@ RUN apt-get update && apt-get install -y --no-install-recommends \
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip && \
-    pip install --no-cache-dir -r requirements.txt
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel "msgpack>=1.2.1" && \
+    pip install --no-cache-dir -r requirements.txt && \
+    rm -rf /usr/local/lib/python*/ensurepip/_bundled/setuptools-*.whl
 
 # Copy the rest of the application
 COPY --chown=user:user . .
