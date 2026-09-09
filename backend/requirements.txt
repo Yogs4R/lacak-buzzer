@@ -8,3 +8,5 @@ pytest==9.0.3
 httpx==0.27.0
 firebase-admin==6.5.0
 twikit==2.3.3
+msgpack>=1.2.1
+setuptools>=78.1.1
