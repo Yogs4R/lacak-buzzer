@@ -1,0 +1,200 @@
+# Lacak Buzzer — Dokumentasi Lengkap (llms-full.txt)
+
+> Alat analisis indikator risiko amplifikasi terkoordinasi berbasis pola perilaku akun X/Twitter. Dibuat untuk jurnalis, peneliti, dan organisasi.
+
+---
+
+## 1. Ringkasan & Definisi Proyek
+
+Lacak Buzzer adalah platform analisis independen yang mengevaluasi pola perilaku publik akun X (Twitter) untuk menghasilkan:
+
+**Indikator Risiko Amplifikasi Terkoordinasi (Skor 0–100)**
+
+Sistem ini memperkirakan pola perilaku yang berkaitan dengan pengulangan pesan, frekuensi aktivitas, pola interaksi, dan potensi amplifikasi. Sistem **tidak pernah** menyimpulkan atau mengklaim bahwa sebuah akun adalah bot, buzzer, akun palsu, akun bayaran, bermaksud jahat, memiliki afiliasi politik tertentu, atau terbukti terkoordinasi.
+
+### Catatan Keamanan Produk Wajib (Mandatory Caveat)
+
+Setiap hasil analisis dan referensi sistem wajib menyertakan caveat berikut:
+
+```text
+Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.
+```
+
+### Prinsip Etika & Keamanan Non-Negosiasi
+
+1. **Bukan Vonis:** Skor hanya mengukur kemiripan pola statistika terhadap pola amplifikasi terkoordinasi.
+2. **Tidak Menyimpulkan Niat:** Sistem tidak menilai kebenaran informasi, afiliasi politik, motif, ataupun identitas asli pemilik akun.
+3. **Privasi Penuh (Stateless):** Sistem tidak menyimpan riwayat tweet, bio akun, teks mentah, ataupun vektor embedding di database.
+4. **Data Publik Saja:** Hanya menganalisis tweet dan metadata publik yang tersedia di platform X.
+
+---
+
+## 2. Metodologi & Rumus Perhitungan Skor (Fixed Scoring Formula)
+
+Sistem mengambil **100 tweet terbaru** (rentang minimum valid 10 tweet) dan mengekstrak 7 metrik perilaku menggunakan formula deterministik berbobot tetap:
+
+### Rincian 7 Komponen Metrik
+
+| No | Nama Metrik | Bobot | Model / Logika Ekstraksi | Rentang Normalisasi |
+|---|---|---|---|---|
+| 1 | **Kemiripan Semantik (Semantic Similarity)** | 30% | Batch embedding lokal via `sentence-transformers/all-MiniLM-L6-v2`. Menghitung rata-rata cosine similarity antarpasangan tweet. | `similarity = semantic_similarity * 100` |
+| 2 | **Kepadatan Tagar (Hashtag Density)** | 20% | `avg_hashtags_per_post = total_hashtags / total_posts`. Normalisasi berbasis batas saturasi 4 tagar/post. | `hashtags = min(avg_hashtags_per_post / 4 * 100, 100)` |
+| 3 | **Intensitas Aktivitas (Activity Intensity)** | 15% | `posts_per_day = total_posts / active_days`. Normalisasi berbasis batas saturasi 80 post/hari. | `activity = min(posts_per_day / 80 * 100, 100)` |
+| 4 | **Rasio Media & URL (Media & URL Ratio)** | 10% | `url_ratio = posts_with_url / total_posts`, `photo_ratio = posts_with_media / total_posts`. | `media_url = (url_ratio * 60) + (photo_ratio * 40)` |
+| 5 | **Perilaku Interaksi (Interaction Behavior)** | 10% | `mention_ratio = posts_with_mentions / total_posts`, `reply_ratio = replies / total_posts`. | `interaction = (mention_ratio * 50) + (reply_ratio * 50)` |
+| 6 | **Risiko Profil (Profile Risk / Authenticity)** | 10% | Evaluasi usia akun dan kelengkapan bio. Usia < 90 hari: +70 poin; Bio kosong: +30 poin. | `profile = (70 if age < 90 else 0) + (30 if bio_empty else 0)` |
+| 7 | **Regularitas Interval Posting (Posting Interval Regularity)** | 5% | Mengukur entropi jeda waktu antarposting. Entropi rendah menunjukkan jadwal posting mekanis/otomatis. | `interval = (1 - posting_entropy) * 100` |
+
+### Formula Skor Akhir
+
+```python
+final_score = (
+    similarity * 0.30 +
+    hashtags * 0.20 +
+    activity * 0.15 +
+    media_url * 0.10 +
+    interaction * 0.10 +
+    profile * 0.10 +
+    interval * 0.05
+)
+final_score = min(final_score, 100)
+```
+
+### Logika Reduksi Anti-False-Positive
+
+Untuk mencegah akun pengguna aktif biasa (organik) mendapatkan skor tinggi yang keliru, diterapkan reduksi otomatis:
+
+```python
+diversity_score = 1 - semantic_similarity
+
+# Reduksi jika variasi topik pesan sangat beragam
+if diversity_score > 0.6:
+    final_score *= 0.7
+
+# Reduksi jika akun jarang memposting (< 5 post per hari)
+if posts_per_day < 5:
+    final_score *= 0.8
+
+# Reduksi jika pola interaksi mention dan reply sangat rendah
+if reply_ratio < 0.3 and mention_ratio < 0.3:
+    final_score *= 0.85
+
+# Clamping akhir
+final_score = round(max(0, min(final_score, 100)))
+```
+
+---
+
+## 3. Interpretasi Skor, Band Risiko, & Kepercayaan
+
+### Kategori Band Risiko
+
+- **0–35 (Rendah):** Pola perilaku akun menunjukkan variasi tinggi, frekuensi posting wajar, dan karakteristik organik tipikal.
+- **36–65 (Sedang):** Ditemukan beberapa pola berulang atau intensitas interaksi di atas rata-rata, namun masih dalam batas perilaku normal pengguna aktif.
+- **66–85 (Tinggi):** Terdapat indikator kuat keseragaman pesan, pengelompokan tagar, atau pola posting dengan ritme sangat teratur.
+- **86–100 (Ekstrem):** Mayoritas metrik menunjukkan karakteristik amplifikasi mekanis/terkoordinasi yang sangat kental.
+
+### Label Tingkat Kepercayaan (Confidence Levels)
+
+- **< 10 Tweet:** *Insufficient Data* — Sistem menolak memberikan skor karena data perilaku tidak mencukupi untuk analisis yang bertanggung jawab.
+- **10–49 Tweet:** *Rendah (Low Confidence)* — Diberikan catatan: *"Kepercayaan hasil rendah karena jumlah tweet yang tersedia terbatas."*
+- **≥ 50 Tweet:** *Normal Confidence* — Sampel tweet memadai untuk evaluasi 7 metrik statistika secara representatif.
+
+---
+
+## 4. Arsitektur & Teknologi
+
+- **Frontend:** React 18, Vite, Tailwind CSS, di-host pada Cloudflare Pages dengan header keamanan ketat (CSP, HSTS, X-Frame-Options).
+- **Backend API:** FastAPI (Python 3.10+), dioptimalkan untuk footprint memori 2GB RAM.
+- **Scraping Engine:** `twscrape` untuk pengambilan data tweet publik secara aman dan hemat bandwidth.
+- **NLP / Embedding Lokal:** `sentence-transformers/all-MiniLM-L6-v2` dijalankan secara lokal di backend CPU untuk menghitung kemiripan semantik tanpa mengirim data teks ke pihak ketiga.
+- **Penjelasan AI (OpenRouter LLM):** Model bahasa eksternal hanya menerima angka metrik agregat ringkas (skor, risiko, sinyal) untuk menghasilkan penjelasan naratif dalam Bahasa Indonesia. Teks tweet mentah **dilarang keras** dikirim ke LLM eksternal.
+- **Fallback Deterministik:** Jika layanan LLM mengalami gangguan, sistem secara otomatis beralih ke templat narasi baku Bahasa Indonesia tanpa memutus pengalaman pengguna.
+
+---
+
+## 5. Pertanyaan yang Sering Diajukan (FAQ)
+
+### Q: Bagaimana cara kerja deteksi buzzer?
+**A:** Sistem kami menganalisis pola posting, interaksi, dan metadata akun menggunakan model machine learning Sentence Transformers MiniLM untuk menghasilkan indikator tingkat risiko berbasis pola perilaku.
+
+### Q: Apakah data pengguna aman?
+**A:** Kami hanya menganalisis data publik yang tersedia di platform X. Tidak ada tweet mentah, profil, ataupun data pribadi yang disimpan secara persisten di server kami (bersifat 100% stateless).
+
+### Q: Bagaimana keandalan indikator risiko ini?
+**A:** Indikator ini dihitung secara deterministik menggunakan rumus bobot tetap yang melacak metrik perilaku akun (seperti kemiripan semantik pesan, kepadatan tagar, intensitas postingan, dan pola interval waktu). Hasilnya berupa indikator tingkat risiko perilaku, bukan vonis mutlak.
+
+### Q: Apakah ada batas penggunaan?
+**A:** Untuk menjaga stabilitas server dan mencegah penyalahgunaan scraping massal, setiap alamat IP dibatasi maksimal 5 kali analisis per menit di website. Layanan ini sepenuhnya gratis tanpa perlu registrasi atau login.
+
+### Q: Apa itu Indikator Risiko Amplifikasi Terkoordinasi?
+**A:** Ini adalah skor 0–100 yang menunjukkan potensi risiko berdasarkan pola perilaku akun, bukan bukti bahwa akun tersebut melakukan koordinasi. Skor tinggi berarti pola perilakunya mirip dengan akun yang terkoordinasi, bukan berarti terbukti bersalah.
+
+---
+
+## 6. Integrasi API (Spesifikasi Endpoint)
+
+### Endpoint Analisis Utama
+
+- **Metode:** `POST`
+- **URL:** `https://lacakbuzzer-lacak-buzzer-backend.hf.space/api/analyze`
+- **Headers:** `Content-Type: application/json`
+
+#### Request Body
+```json
+{
+  "target": "nama_pengguna_x",
+  "source": "website",
+  "tweet_limit": 100
+}
+```
+
+#### Response Sukses (200 OK)
+```json
+{
+  "target": "nama_pengguna_x",
+  "score": 74,
+  "risk_band": "Tinggi",
+  "confidence": "normal",
+  "tweet_count": 100,
+  "metrics": {
+    "semantic_similarity": 82,
+    "hashtag_density": 70,
+    "activity_intensity": 65,
+    "media_url_ratio": 45,
+    "interaction_behavior": 80,
+    "profile_risk": 70,
+    "posting_interval_regularity": 50
+  },
+  "signals": [
+    "Kemiripan pesan cukup tinggi",
+    "Pola penggunaan tagar terlihat padat",
+    "Aktivitas dan interaksi terlihat intens"
+  ],
+  "explanation": "Penjelasan ringkas dalam Bahasa Indonesia.",
+  "caveat": "Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu."
+}
+```
+
+---
+
+## 7. X (Twitter) Bot Integration
+
+Akun bot otomatis memantau mention publik:
+- Format panggilan: Menyebut akun bot disertai username target yang ingin dianalisis.
+- Bot mengabaikan mention tanpa target spesifik dan menghindari menganalisis si pemohon itu sendiri.
+- Format balasan bot ringkas, netral, menyajikan band risiko, skor, sinyal utama, dan catatan caveat wajib.
+- Dibatasi 10 balasan publik per menit secara global demi kepatuhan terhadap platform X.
+
+---
+
+## 8. Tautan & Halaman Resmi
+
+- Website Utama: https://lacakbuzzer.web.id/
+- Tentang Kami: https://lacakbuzzer.web.id/about
+- Pertanyaan Umum (FAQ): https://lacakbuzzer.web.id/faq
+- Kebijakan Privasi: https://lacakbuzzer.web.id/privacy
+- Syarat & Ketentuan: https://lacakbuzzer.web.id/terms
+- Ringkasan LLMs: https://lacakbuzzer.web.id/llms.txt
+- Dokumentasi Penuh LLMs: https://lacakbuzzer.web.id/llms-full.txt
+- Repositori GitHub: https://github.com/Yogs4R/lacak-buzzer
