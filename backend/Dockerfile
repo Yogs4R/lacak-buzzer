@@ -11,10 +11,12 @@ ENV PYTHONUNBUFFERED=1 \
 RUN useradd -m -u 1000 user
 WORKDIR $HOME/app
 
-# Install system dependencies
-RUN apt-get update && apt-get install -y --no-install-recommends \
-    build-essential \
-    curl \
+# Install system dependencies and apply security patches
+RUN apt-get update && \
+    apt-get upgrade -y && \
+    apt-get install -y --no-install-recommends \
+        build-essential \
+        curl \
     && rm -rf /var/lib/apt/lists/*
 
 # Copy requirements and install dependencies

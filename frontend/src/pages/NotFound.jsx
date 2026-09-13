@@ -1,6 +1,5 @@
 import { Link } from 'react-router-dom';
 import { useSEO } from '../hooks/useSEO';
-import { CaveatBlock } from '../components/Footer';
 
 export default function NotFound() {
   useSEO({
