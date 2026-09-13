@@ -4,6 +4,8 @@ import { useSEO } from '../hooks/useSEO';
 export default function Terms() {
   useSEO({
     title: 'Lacak Buzzer | Terms',
+    description:
+      'Syarat dan Ketentuan penggunaan platform Lacak Buzzer. Panduan penggunaan bertanggung jawab untuk keperluan riset dan jurnalisme.',
     canonical: 'https://lacakbuzzer.web.id/terms',
     schema: {
       '@context': 'https://schema.org',

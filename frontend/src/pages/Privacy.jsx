@@ -4,6 +4,8 @@ import { useSEO } from '../hooks/useSEO';
 export default function Privacy() {
   useSEO({
     title: 'Lacak Buzzer | Privacy',
+    description:
+      'Kebijakan Privasi Lacak Buzzer. Kami tidak menyimpan tweet, profil, atau hasil analisis — pemrosesan data 100% bersifat stateless.',
     canonical: 'https://lacakbuzzer.web.id/privacy',
     schema: {
       '@context': 'https://schema.org',

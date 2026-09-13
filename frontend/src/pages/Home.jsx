@@ -271,6 +271,8 @@ export default function Home() {
   const resultsRef = useRef(null);
 
   useSEO({
+    title: 'Lacak Buzzer | Analisis Akun X/Twitter',
+    description: 'Alat untuk menganalisis indikator risiko amplifikasi terkoordinasi pada akun X/Twitter berbasis pola perilaku.',
     canonical: 'https://lacakbuzzer.web.id/',
     schema: {
       '@context': 'https://schema.org',

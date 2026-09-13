@@ -14,6 +14,8 @@ export default function About() {
 
   useSEO({
     title: 'Lacak Buzzer | About',
+    description:
+      'Platform Indikator Risiko Amplifikasi Terkoordinasi — alat bantu berbasis AI untuk jurnalis, peneliti, dan organisasi yang ingin memahami pola amplifikasi di platform X.',
     canonical: 'https://lacakbuzzer.web.id/about',
     schema: {
       '@context': 'https://schema.org',

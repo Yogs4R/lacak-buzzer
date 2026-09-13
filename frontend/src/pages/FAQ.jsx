@@ -69,6 +69,8 @@ export default function FAQ() {
 
   useSEO({
     title: 'Lacak Buzzer | FAQ',
+    description:
+      'Pertanyaan yang sering diajukan mengenai cara kerja analisis, metodologi 7 metrik, privasi data pengguna, dan batasan penggunaan Lacak Buzzer.',
     canonical: 'https://lacakbuzzer.web.id/faq',
     schema: {
       '@context': 'https://schema.org',
