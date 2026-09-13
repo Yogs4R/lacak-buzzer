@@ -2,7 +2,6 @@
 <html lang="id">
   <head>
     <meta charset="UTF-8">
-    <link rel="icon" type="image/svg+xml" href="/vite.svg">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     
     <!-- Primary Meta Tags -->
@@ -28,6 +27,9 @@
         "url": "https://lacakbuzzer.web.id",
         "description": "Alat analisis indikator risiko amplifikasi terkoordinasi berbasis pola perilaku akun X/Twitter.",
         "inLanguage": "id",
+        "sameAs": [
+          "https://github.com/Yogs4R/lacak-buzzer"
+        ],
         "potentialAction": {
           "@type": "SearchAction",
           "target": {
@@ -42,11 +44,15 @@
         "@type": "WebApplication",
         "name": "Lacak Buzzer",
         "url": "https://lacakbuzzer.web.id",
-        "description": "Menghasilkan Indikator Risiko Amplifikasi Terkoordinasi (skor 0\u2013100) dari pola perilaku akun X/Twitter. Bukan klaim fakta atau vonis.",
+        "description": "Menghasilkan Indikator Risiko Amplifikasi Terkoordinasi (skor 0–100) dari pola perilaku akun X/Twitter. Bukan klaim fakta atau vonis.",
         "applicationCategory": "UtilitiesApplication",
         "operatingSystem": "Any",
         "browserRequirements": "Requires JavaScript",
         "inLanguage": "id",
+        "softwareVersion": "1.0.0",
+        "sameAs": [
+          "https://github.com/Yogs4R/lacak-buzzer"
+        ],
         "offers": {
           "@type": "Offer",
           "price": "0",
@@ -54,23 +60,29 @@
         },
         "featureList": [
           "Analisis semantik tweet menggunakan MiniLM",
-          "Skor risiko 0\u2013100 berbasis 7 metrik perilaku",
+          "Skor risiko 0–100 berbasis 7 metrik perilaku",
           "Penjelasan hasil dalam Bahasa Indonesia",
-          "Stateless \u2014 tidak menyimpan data pengguna",
+          "Stateless — tidak menyimpan data pengguna",
           "Gratis tanpa registrasi"
         ],
         "creator": {
           "@type": "Organization",
           "name": "Lacak Buzzer",
-          "url": "https://lacakbuzzer.web.id"
+          "url": "https://lacakbuzzer.web.id",
+          "sameAs": [
+            "https://github.com/Yogs4R/lacak-buzzer"
+          ]
         }
       }
     ]
     </script>
 
-    <!-- GEO: llms.txt autodiscovery untuk AI crawlers -->
+    <!-- GEO: LLM autodiscovery untuk AI crawlers (ChatGPT, Perplexity, Claude, dll.) -->
     <link rel="alternate" type="text/plain" title="LLMs.txt" href="/llms.txt">
+    <link rel="alternate" type="text/plain" title="LLMs-Full.txt" href="/llms-full.txt">
 
+    <!-- Icons -->
+    <link rel="icon" type="image/x-icon" href="/favicon.ico">
     <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32x32.png">
     <link rel="icon" type="image/png" sizes="16x16" href="/favicon-16x16.png">
     <link rel="apple-touch-icon" sizes="180x180" href="/apple-touch-icon.png">
@@ -84,10 +96,20 @@
     <meta property="og:title" content="Lacak Buzzer | Analisis Akun X/Twitter">
     <meta property="og:description" content="Alat untuk menganalisis indikator risiko amplifikasi terkoordinasi pada akun X/Twitter.">
     <meta property="og:image" content="https://lacakbuzzer.web.id/og-image.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:type" content="image/png">
+    <meta property="og:image:alt" content="Lacak Buzzer - Analisis Indikator Risiko Amplifikasi Terkoordinasi">
     <meta property="og:locale" content="id_ID">
     <meta property="og:site_name" content="Lacak Buzzer">
 
     <!-- X (Twitter) -->
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:url" content="https://lacakbuzzer.web.id">
+    <meta name="twitter:title" content="Lacak Buzzer | Analisis Akun X/Twitter">
+    <meta name="twitter:description" content="Alat untuk menganalisis indikator risiko amplifikasi terkoordinasi pada akun X/Twitter.">
+    <meta name="twitter:image" content="https://lacakbuzzer.web.id/og-image.png">
+    <meta name="twitter:image:alt" content="Lacak Buzzer - Analisis Indikator Risiko Amplifikasi Terkoordinasi">
     <meta property="twitter:card" content="summary_large_image">
     <meta property="twitter:url" content="https://lacakbuzzer.web.id">
     <meta property="twitter:title" content="Lacak Buzzer | Analisis Akun X/Twitter">
@@ -101,6 +123,36 @@
   </head>
 
   <body>
+    <!-- Fallback untuk AI fetchers, search crawlers tanpa JS, dan pembaca teks -->
+    <noscript>
+      <div style="max-width: 800px; margin: 40px auto; padding: 24px; font-family: system-ui, -apple-system, sans-serif; line-height: 1.6; color: #f4f4f5; background: #18181b; border-radius: 8px;">
+        <h1 style="font-size: 24px; margin-bottom: 12px; color: #f97316;">Lacak Buzzer | Analisis Akun X/Twitter</h1>
+        <p>Lacak Buzzer adalah alat analisis independen untuk menghasilkan <strong>Indikator Risiko Amplifikasi Terkoordinasi (skor 0–100)</strong> berbasis pola perilaku akun X/Twitter.</p>
+        <p style="background: #27272a; padding: 12px; border-left: 4px solid #f97316; font-size: 14px;">
+          <em>Catatan Penting: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.</em>
+        </p>
+        <h2 style="font-size: 18px; margin-top: 20px;">Fitur &amp; Metodologi Utama:</h2>
+        <ul>
+          <li>Analisis kemiripan semantik tweet menggunakan model lokal <code>sentence-transformers/all-MiniLM-L6-v2</code>.</li>
+          <li>Evaluasi 7 metrik perilaku berbobot tetap (kemiripan, tagar, intensitas posting, rasio media/URL, interaksi, risiko profil, entropi interval).</li>
+          <li>Arsitektur 100% Stateless — privasi terlindungi tanpa menyimpan tweet mentah atau riwayat pencarian.</li>
+        </ul>
+        <h2 style="font-size: 18px; margin-top: 20px;">Tautan Halaman:</h2>
+        <p>
+          <a href="/" style="color: #f97316;">Beranda</a> | 
+          <a href="/about" style="color: #f97316;">Tentang Kami</a> | 
+          <a href="/faq" style="color: #f97316;">FAQ</a> | 
+          <a href="/privacy" style="color: #f97316;">Kebijakan Privasi</a> | 
+          <a href="/terms" style="color: #f97316;">Syarat &amp; Ketentuan</a>
+        </p>
+        <h2 style="font-size: 18px; margin-top: 20px;">Dokumentasi untuk LLM / AI Search:</h2>
+        <p>
+          <a href="/llms.txt" style="color: #f97316;">llms.txt (Ringkasan AI)</a> | 
+          <a href="/llms-full.txt" style="color: #f97316;">llms-full.txt (Dokumentasi Lengkap AI)</a>
+        </p>
+      </div>
+    </noscript>
+
     <div id="root">
       <h1 style="position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0;">
         Lacak Buzzer | Analisis Akun X/Twitter
