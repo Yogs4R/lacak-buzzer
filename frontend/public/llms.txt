@@ -4,11 +4,15 @@
 
 Lacak Buzzer menghasilkan "Indikator Risiko Amplifikasi Terkoordinasi" — skor 0–100 untuk akun X/Twitter berdasarkan pola perilaku yang dapat diamati secara publik. Bukan klaim fakta, bukan vonis.
 
+## Dokumentasi Penuh (Full Documentation)
+
+- [Dokumentasi Lengkap (llms-full.txt)](https://lacakbuzzer.web.id/llms-full.txt): Penjelasan mendalam mengenai metodologi 7 metrik, rumus perhitungan skor deterministik, reduksi anti-false-positive, seluruh FAQ, spesifikasi endpoint API, dan pedoman etika/keamanan.
+
 ## Cara Kerja
 
 - Menganalisis 100 tweet terbaru dari akun target
-- Menggunakan model semantik lokal: sentence-transformers/all-MiniLM-L6-v2
-- Skor dihitung dari 7 metrik perilaku:
+- Menggunakan model semantik lokal: `sentence-transformers/all-MiniLM-L6-v2`
+- Skor dihitung dari 7 metrik perilaku berbobot tetap:
   1. Kemiripan semantik antar tweet (bobot 30%)
   2. Kepadatan penggunaan tagar (bobot 20%)
   3. Intensitas aktivitas posting (bobot 15%)
@@ -28,13 +32,14 @@ Lacak Buzzer menghasilkan "Indikator Risiko Amplifikasi Terkoordinasi" — skor 
 
 Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu. Sistem tidak menyimpan tweet, profil, atau hasil analisis (stateless).
 
-## Halaman
+## Halaman & Sumber Daya
 
-- Beranda & analisis: https://lacakbuzzer.web.id/
-- Tentang kami: https://lacakbuzzer.web.id/about
-- FAQ: https://lacakbuzzer.web.id/faq
-- Kebijakan Privasi: https://lacakbuzzer.web.id/privacy
-- Syarat & Ketentuan: https://lacakbuzzer.web.id/terms
+- [Beranda & Alat Analisis](https://lacakbuzzer.web.id/): Antarmuka pencarian dan kalkulator skor risiko.
+- [Tentang Kami](https://lacakbuzzer.web.id/about): Informasi misi, metodologi terbuka, dan pilar kepercayaan.
+- [Pertanyaan yang Sering Diajukan (FAQ)](https://lacakbuzzer.web.id/faq): Jawaban lengkap seputar cara kerja, privasi, dan batasan sistem.
+- [Kebijakan Privasi](https://lacakbuzzer.web.id/privacy): Komitmen pemrosesan data stateless tanpa penyimpanan.
+- [Syarat & Ketentuan](https://lacakbuzzer.web.id/terms): Ketentuan penggunaan wajar untuk jurnalisme dan riset.
+- [Repositori Open Source](https://github.com/Yogs4R/lacak-buzzer): Kode sumber dan arsitektur publik.
 
 ## Teknologi
 
@@ -44,5 +49,5 @@ Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun 
 
 ## Batasan Penggunaan
 
-- 5 analisis per IP per hari (website)
+- 5 analisis per IP per menit (website)
 - Gratis, tanpa registrasi

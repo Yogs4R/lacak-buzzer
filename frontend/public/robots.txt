@@ -1,4 +1,28 @@
 User-agent: *
 Allow: /
 
+# AI Crawlers & LLM Agents (GEO Friendly)
+User-agent: GPTBot
+Allow: /
+
+User-agent: ChatGPT-User
+Allow: /
+
+User-agent: ClaudeBot
+Allow: /
+
+User-agent: PerplexityBot
+Allow: /
+
+User-agent: Google-Extended
+Allow: /
+
+User-agent: Applebot-Extended
+Allow: /
+
+# Sitemap
 Sitemap: https://lacakbuzzer.web.id/sitemap.xml
+
+# LLM Documentation
+# https://lacakbuzzer.web.id/llms.txt
+# https://lacakbuzzer.web.id/llms-full.txt
