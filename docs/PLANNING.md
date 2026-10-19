@@ -1,10 +1,33 @@
-# Rencana Implementasi: Alternatif Bot Telegram/Discord (Lacak Buzzer)
+# Rencana Pengembangan & Ekosistem Multi-Platform (Lacak Buzzer)
 
-Dokumen ini berisi rencana implementasi taktis untuk menggantikan Bot X/Twitter dengan **Telegram Bot** atau **Discord Bot** sebagai platform interaktif alternatif. Langkah ini diusulkan untuk mengatasi kendala kebijakan komersialisasi baru X API per Februari 2026 (penghapusan Free Tier dan kewajiban Pay-Per-Use).
+Dokumen ini memuat peta jalan (*roadmap*), arsitektur, dan spesifikasi rencana implementasi untuk memperluas ekosistem **Lacak Buzzer** ke berbagai platform: Bot Interaktif (Telegram/Discord), CLI, Model Context Protocol (MCP), Python SDK, Browser Extension, opsi *Full Local Self-Hosted*, serta integrasi dokumentasi publik pada situs web.
 
 ---
 
-## 1. Perbandingan Keuntungan Alternatif Bot
+## 🗺️ Ringkasan Roadmap Ekosistem
+
+```mermaid
+graph TD
+    API[FastAPI Backend /api/analyze]
+    
+    API --> Web[Web App - React/Vite]
+    API --> CLI[Terminal CLI - Typer & Rich]
+    API --> MCP[MCP Server - Claude / Cursor / Antigravity]
+    API --> SDK[Python SDK - pip install lacak-buzzer]
+    API --> Ext[Browser Extension - Chrome / Firefox]
+    API --> TG[Telegram Bot]
+    API --> DC[Discord Bot]
+    
+    SelfHost[Docker Compose] -.->|Menjalankan Mandiri| API
+```
+
+---
+
+## 1. Alternatif Bot Interaktif: Telegram & Discord
+
+Langkah ini dirancang untuk menyediakan interaksi instan tanpa ketergantungan pada batasan ketat dan biaya komersial X API.
+
+### A. Perbandingan Keuntungan
 
 | Parameter | Twitter/X Bot (Nonaktif) | Telegram Bot (Rekomendasi) | Discord Bot |
 |---|---|---|---|
@@ -14,105 +37,134 @@ Dokumen ini berisi rencana implementasi taktis untuk menggantikan Bot X/Twitter 
 | **Kemampuan Menampilkan Hasil** | Terbatas (Tanpa penjelasan AI) | **Lengkap** (Bisa menampilkan semua metrik + AI explanation) | **Lengkap** (Bisa format Rich Embed yang indah + AI explanation) |
 | **Model Polling/Webhook** | Polling via twscrape + write Tweepy | Long-polling ringan atau Webhook gratis | WebSocket gateway (`discord.py`) |
 
----
+### B. Telegram Bot (Pilihan Utama)
+- **Library:** `pyTelegramBotAPI==4.15.0`
+- **Konfigurasi:** Simpan token di `.env` (`TELEGRAM_BOT_TOKEN`).
+- **Perintah:** `/analyze <username>` atau `/lacak <username>`.
+- **Format Keluaran:** Rich Markdown memuat skor total, 7 metrik perilaku, dan eksplanasi AI.
 
-## 2. Rencana Arsitektur & Alur Sistem
-
-Baik Telegram maupun Discord akan bertindak sebagai **klien antarmuka** yang memanggil endpoint backend yang sama, yaitu `/api/analyze` di FastAPI.
-
-```mermaid
-graph TD
-    User([Pengguna Telegram / Discord]) -->|Kirim Perintah /analyze @username| BotProcess[Proses Bot Latar Belakang]
-    BotProcess -->|Pengecekan Rate Limit Lokal| RateLimit{Apakah Limit Aman?}
-    RateLimit -->|Ya| API[FastAPI /api/analyze]
-    RateLimit -->|Tidak| BotProcess -->|Balas Pesan: Rate Limit Tercapai| User
-    API -->|Scraping & Analisis ML| Firestore[(Firestore logs/scan_history)]
-    API -->|Kembalikan JSON Hasil| BotProcess
-    BotProcess -->|Format Markdown/Rich Embed| User
-```
+### C. Discord Bot (Pilihan Komunitas)
+- **Library:** `discord.py==2.3.2`
+- **Konfigurasi:** Simpan token di `.env` (`DISCORD_BOT_TOKEN`).
+- **Perintah:** Slash command `/analyze target:<username>`.
 
 ---
 
-## 3. Desain Implementasi: Telegram Bot (Pilihan Utama)
+## 2. CLI (Command-Line Interface) & MCP Server
 
-Telegram Bot adalah alternatif terbaik karena proses pembuatannya instan dan interaksinya sangat cepat melalui perangkat mobile.
+Mengizinkan developer, analis data, dan agen AI mengakses analisis Lacak Buzzer langsung dari terminal maupun editor kode (Cursor, Claude Desktop, Antigravity, VS Code).
 
-### A. Langkah Pembuatan Bot Telegram (1 Menit)
-1. Buka aplikasi Telegram, cari akun **`@BotFather`** (bot resmi Telegram).
-2. Kirim perintah `/newbot`.
-3. Masukkan nama bot (misal: `Lacak Buzzer Bot`) dan username bot (misal: `lacak_buzzer_bot`).
-4. `@BotFather` akan memberikan **HTTP API Bot Token** (simpan di `.env` sebagai `TELEGRAM_BOT_TOKEN`).
+### A. Arsitektur Client Ringan (Lightweight Wrapper)
+Alih-alih menduplikasi proses scraping dan model transformer di mesin pengguna, CLI dan MCP dirancang sebagai *lightweight client* yang mengonsumsi endpoint REST API FastAPI (`/api/analyze`).
+- **Opsi Fleksibilitas:** Menyediakan flag `--api-url` (default ke server cloud publik, atau diarahkan ke `http://localhost:8000` untuk pengguna *self-hosted*).
 
-### B. Library Python yang Digunakan
-Tambahkan library `pyTelegramBotAPI` (ringan dan bertipe sinkron/asinkron) ke `requirements.txt`:
-```text
-pyTelegramBotAPI==4.15.0
-```
+### B. Spesifikasi CLI
+- **Library:** `typer` (CLI runner) dan `rich` (formatting tabel, panel, gauge progress warna di terminal).
+- **Contoh Perintah:**
+  ```bash
+  # Analisis cepat akun
+  lacak-buzzer analyze detikcom
 
-### C. Alur Penggunaan (User Experience)
-*   **Trigger Command:** `/analyze <username>` atau `/lacak <username>`.
-*   **Contoh:** `/analyze jokowi` (tanpa `@` atau dengan `@`).
+  # Analisis dengan URL API custom
+  lacak-buzzer analyze jokowi --api-url http://localhost:8000
 
-### D. Mockup Draft Respon Telegram (Format Rich Markdown)
-Karena Telegram mendukung 4.096 karakter dan format Markdown, bot dapat membalas dengan visualisasi yang jauh lebih detail dibanding Bot X:
+  # Output dalam format JSON mentah
+  lacak-buzzer analyze detikcom --json
+  ```
+- **Contoh Tampilan Terminal (Rich Output):**
+  - Panel header dengan target username dan status profil.
+  - Gauge / progress bar skor risiko: `[████████░░] 74/100 (Tinggi)`.
+  - Tabel rincian metrik: Semantik Repetisi, Kepadatan Tagar, Pola Waktu, dsb.
+  - Kotak narasi eksplanasi AI.
 
-```text
-📊 *HASIL PEMINDAIAN AKUN X*
-Target: @jokowi
-Tingkat Kepercayaan: Normal
+### C. Spesifikasi MCP Server (Model Context Protocol)
+- **Library:** `mcp` / `fastmcp`
+- **Penyedia Tool untuk AI Agent:**
+  ```python
+  from mcp.server.fastmcp import FastMCP
+  import httpx
 
-🔴 *Indikator Risiko Amplifikasi Terkoordinasi: 74/100 (Tinggi)*
+  mcp = FastMCP("Lacak Buzzer")
 
-🔍 *Rincian Metrik Perilaku:*
-• Kemiripan Semantik (Repetisi): 82%
-• Kepadatan Tagar: 70%
-• Intensitas Aktivitas Posting: 65%
-• Rasio Tautan & Media: 45%
-• Pola Interaksi (Mention/Reply): 80%
-• Usia & Risiko Kelengkapan Profil: 70%
-• Keteraturan Waktu Posting: 50%
-
-💡 *Penjelasan Analisis (AI):*
-Akun menunjukkan pola interaksi dan kemiripan narasi yang cukup tinggi di antara postingannya, serta pola waktu postingan yang relatif teratur yang mengindikasikan adanya manajemen konten terjadwal.
-
-⚠️ _Catatan: Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu._
-```
-
----
-
-## 4. Desain Implementasi: Discord Bot (Pilihan Alternatif)
-
-Discord Bot sangat cocok jika kelompok Anda ingin melakukan demo pada server komunitas Discord dengan visualisasi yang mewah menggunakan *Discord Embeds*.
-
-### A. Langkah Pembuatan
-1. Masuk ke [Discord Developer Portal](https://discord.com/developers/applications).
-2. Klik **New Application**, beri nama aplikasi.
-3. Masuk ke tab **Bot**, klik **Add Bot**.
-4. Aktifkan **Message Content Intent** di bawah halaman pengaturan Bot agar bot dapat membaca pesan chat.
-5. Salin Token Bot tersebut ke `.env` sebagai `DISCORD_BOT_TOKEN`.
-
-### B. Library Python yang Digunakan
-```text
-discord.py==2.3.2
-```
-
-### C. Alur Penggunaan
-*   Slash command: `/analyze target:<username>`
+  @mcp.tool()
+  async def analyze_twitter_account(username: str, api_url: str = "https://lacakbuzzer-lacak-buzzer-backend.hf.space") -> dict:
+      """Menganalisis profil akun X/Twitter untuk mendeteksi indikator risiko amplifikasi terkoordinasi."""
+      async with httpx.AsyncClient() as client:
+          res = await client.post(f"{api_url}/api/analyze", json={"target": username, "source": "mcp"})
+          return res.json()
+  ```
+- **Integrasi Klien:**
+  Pengguna cukup menambahkan konfigurasi MCP di Claude Desktop atau Cursor config:
+  ```json
+  {
+    "mcpServers": {
+      "lacak-buzzer": {
+        "command": "uvx",
+        "args": ["lacak-buzzer-mcp"]
+      }
+    }
+  }
+  ```
 
 ---
 
-## 5. Rencana Perubahan Kode Backend (Lifespan Task)
+## 3. Python SDK (`lacak-buzzer`)
 
-Sama seperti bot X, bot Telegram atau Discord ini akan berjalan sebagai background task di [backend/main.py](file:///e:/project-coding/lacak-buzzer/backend/main.py):
+Pustaka pip resmi untuk mempermudah integrasi terprogram bagi analis data, peneliti OSINT, dan akademisi:
 
 ```python
-# Di dalam lifespan main.py
-telegram_token = os.getenv("TELEGRAM_BOT_TOKEN")
-if telegram_token:
-    import asyncio
-    from bot.telegram_bot import start_telegram_bot
-    asyncio.create_task(start_telegram_bot(telegram_token))
-    print("🤖 [Startup] Bot Telegram aktif di latar belakang.")
+from lacak_buzzer import LacakBuzzerClient
+
+client = LacakBuzzerClient(api_url="https://lacakbuzzer.web.id")
+result = client.analyze("username_target")
+
+print(f"Skor Risiko: {result.score} ({result.risk_label})")
+for metric in result.metrics:
+    print(f"- {metric.name}: {metric.value}%")
 ```
 
-Ini memastikan aplikasi tetap berjalan satu pintu di Hugging Face Spaces tanpa memerlukan konfigurasi infrastruktur VPS tambahan.
+---
+
+## 4. Browser Extension (Chrome / Firefox / Edge)
+
+Ekstensi peramban berbasis **Manifest V3** untuk memberikan akses inspeksi akun instan tanpa meninggalkan linimasa X/Twitter:
+
+- **Alur Kerja:**
+  1. Konten skrip (*content script*) mendeteksi halaman profil `x.com/<username>`.
+  2. Menyisipkan tombol kecil **"🔍 Cek Indikator Lacak Buzzer"** di sebelah tombol *Follow*.
+  3. Saat diklik, ekstensi mengirim request ke API dan menampilkan kartu *popover* mengambang berisi skor risiko dan peringatan disclaimer etika.
+
+---
+
+## 5. Opsi Full Local / Self-Hosted Stack (`docker-compose.yml`)
+
+Memungkinkan siapapun menjalankan seluruh sistem Lacak Buzzer secara mandiri di mesin lokal atau server pribadi:
+
+- **Komponen Docker Compose:**
+  - `backend`: Menjalankan FastAPI, Sentence-Transformers lokal, dan worker twscrape.
+  - `frontend`: Menjalankan build Nginx/Vite yang otomatis terhubung ke backend lokal.
+- **Berkas Konfigurasi yang Dibutuhkan:**
+  - Sediakan `.env.example` yang memuat template akun scraper X (`TWITTER_COOKIES`) dan `OPENROUTER_API_KEY`.
+- **Keuntungan:** Tidak membebani kuota API maupun instance Hugging Face produksi.
+
+---
+
+## 6. Rencana Dokumentasi Publik di Website
+
+Apakah situs web [lacakbuzzer.web.id](https://lacakbuzzer.web.id) membutuhkan menu dokumentasi? **Ya, sangat direkomendasikan!**
+
+### A. Kebutuhan & Nilai Tambah
+1. **Transparansi Metodologi (Algoritma & Formula):**  
+   Pengunjung dapat memahami formula 7 metrik pembentuk skor risiko, sehingga terhindar dari kesalahpahaman bahwa skor adalah tuduhan sepihak.
+2. **Katalog Panduan API & Ekosistem:**  
+   Menyediakan panduan lengkap untuk:
+   - Penggunaan REST API publik (`/api/analyze`, `/api/leaderboard`).
+   - Panduan instalasi dan penggunaan CLI (`lacak-buzzer analyze <user>`).
+   - Panduan konfigurasi MCP Server untuk Cursor dan Claude Desktop.
+   - Kebijakan Rate Limiting dan Etika Penggunaan.
+
+### B. Alternatif Desain Implementasi di Web
+1. **Halaman `/docs` Internal (React Page):**  
+   Membuat rute baru `lacakbuzzer.web.id/docs` dengan tata letak dokumentasi modern (sidebar navigasi, syntax highlight kode, tab panduan CLI/MCP).
+2. **Tautan Langsung ke FastAPI Swagger / Redoc:**  
+   Menambahkan tombol *"API Docs"* di navbar/footer yang mengarah langsung ke endpoint OpenAPI interaktif backend.
