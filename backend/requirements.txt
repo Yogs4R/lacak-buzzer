@@ -10,3 +10,4 @@ firebase-admin==6.5.0
 twikit==2.3.3
 msgpack>=1.2.1
 setuptools>=78.1.1
+urllib3>=2.8.0

@@ -21,7 +21,7 @@ RUN apt-get update && \
 
 # Copy requirements and install dependencies
 COPY requirements.txt .
-RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel "msgpack>=1.2.1" && \
+RUN pip install --no-cache-dir --upgrade pip "setuptools>=78.1.1" wheel "msgpack>=1.2.1" "urllib3>=2.8.0" && \
     pip install --no-cache-dir -r requirements.txt && \
     rm -rf /usr/local/lib/python*/ensurepip/_bundled/setuptools-*.whl
 
