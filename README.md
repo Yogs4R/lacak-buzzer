@@ -21,6 +21,7 @@
 - [Tabel Keamanan (Security Table)](#tabel-keamanan-security-table)
 - [Instalasi & Cara Menjalankan](#instalasi--cara-menjalankan)
 - [Status X Bot & Contoh Respon](#status-x-bot--contoh-respon)
+- [Komunitas & Tata Kelola](#komunitas--tata-kelola)
 - [Catatan Keamanan](#catatan-keamanan)
 
 ---
@@ -319,5 +320,13 @@ https://lacakbuzzer.web.id atau mentions @lacakbuzzer
 > Contoh: `@lacakbuzzer analisis akun @detikcom`
 > Bot akan otomatis membalas dengan hasil analisis dalam beberapa saat.
 
+## Komunitas & Tata Kelola
+Kami menyambut baik partisipasi komunitas dalam mengembangkan dan menjaga integritas proyek ini:
+- 📜 [Kode Etik (CODE_OF_CONDUCT.md)](CODE_OF_CONDUCT.md) — Standar perilaku dan komitmen lingkungan inklusif.
+- 🤝 [Panduan Kontribusi (CONTRIBUTING.md)](CONTRIBUTING.md) — Alur kerja git, standar pengujian, dan pedoman etika analisis.
+- 🔒 [Kebijakan Keamanan (SECURITY.md)](SECURITY.md) — Tata cara pelaporan kerentanan secara privat dan bertanggung jawab.
+- 👥 [Daftar Kontributor (CONTRIBUTORS.md)](CONTRIBUTORS.md) — Pengembang inti dan kontributor komunitas.
+
 ## Catatan Keamanan
 *Skor yang dihasilkan adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.*
+
