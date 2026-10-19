@@ -40,7 +40,7 @@ Pedoman ini berlaku di semua ruang proyek Lacak Buzzer (termasuk repositori GitH
 
 Kasus perilaku yang melecehkan, mengintimidasi, atau tidak dapat diterima dapat dilaporkan ke tim pengelola proyek melalui:
 
-* **Email:** [ridwansuryantara@gmail.com](mailto:ridwansuryantara@gmail.com)
+* **Email:** [fuenzerofficial@gmail.com](mailto:fuenzerofficial@gmail.com)
 * **GitHub:** [@Yogs4R](https://github.com/Yogs4R)
 
 Semua keluhan akan ditinjau dan diselidiki secara cepat dan adil. Tim pengelola berkewajiban menghormati privasi dan keamanan pelapor.
