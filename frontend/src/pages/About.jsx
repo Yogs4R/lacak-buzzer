@@ -3,9 +3,12 @@ import { CaveatBlock } from '../components/Footer';
 import { useSEO } from '../hooks/useSEO';
 
 const getApiUrl = (path) => {
+  if (import.meta.env.VITE_API_URL !== undefined) {
+    return `${import.meta.env.VITE_API_URL}${path}`;
+  }
   const base = import.meta.env.DEV
     ? ''
-    : (import.meta.env.VITE_API_URL || "https://lacakbuzzer-lacak-buzzer-backend.hf.space");
+    : "https://lacakbuzzer-lacak-buzzer-backend.hf.space";
   return `${base}${path}`;
 };
 

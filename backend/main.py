@@ -56,15 +56,28 @@ from fastapi.middleware.cors import CORSMiddleware
 
 app = FastAPI(title="Lacak Buzzer API", lifespan=lifespan)
 
-# Konfigurasi CORS agar hanya domain frontend resmi yang dapat memanggil API di Hugging Face Spaces
+# Konfigurasi CORS agar frontend resmi maupun instance lokal dapat mengakses API
+cors_origins = [
+    "https://lacakbuzzer.web.id",
+    "https://lacakbuzzer.pages.dev",
+    "http://localhost:5173",          # Testing Vite dev server
+    "http://localhost:4173",          # Testing preview Vite
+    "http://localhost:3000",          # Testing Docker Compose frontend
+    "http://localhost:80",            # Akses port HTTP standar
+    "http://localhost",
+    "http://127.0.0.1:5173",
+    "http://127.0.0.1:3000",
+]
+env_allowed_origins = os.getenv("ALLOWED_ORIGINS")
+if env_allowed_origins:
+    for origin in env_allowed_origins.split(","):
+        cleaned = origin.strip()
+        if cleaned and cleaned not in cors_origins:
+            cors_origins.append(cleaned)
+
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "https://lacakbuzzer.web.id",
-        "https://lacakbuzzer.pages.dev",  # Ganti dengan subdomain .pages.dev Anda jika berbeda
-        "http://localhost:5173",          # Untuk testing lokal di browser
-        "http://localhost:4173"           # Untuk testing preview lokal
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST"],
     allow_headers=["Content-Type", "Authorization"],

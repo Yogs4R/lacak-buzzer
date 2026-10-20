@@ -4,11 +4,14 @@ import ResultCard from '../components/ResultCard';
 import { useSEO } from '../hooks/useSEO';
 
 const getApiUrl = (path) => {
-  // Jika sedang didevelop secara lokal, gunakan path relatif agar proxy Vite bekerja.
-  // Jika di production, gunakan VITE_API_URL dari Cloudflare, atau fallback ke URL Space Hugging Face.
+  // Jika import.meta.env.VITE_API_URL didefinisikan (meskipun string kosong ""), gunakan itu.
+  // String kosong berguna untuk reverse proxy same-origin (seperti Docker Nginx atau Vite dev).
+  if (import.meta.env.VITE_API_URL !== undefined) {
+    return `${import.meta.env.VITE_API_URL}${path}`;
+  }
   const base = import.meta.env.DEV
     ? ''
-    : (import.meta.env.VITE_API_URL || "https://lacakbuzzer-lacak-buzzer-backend.hf.space");
+    : "https://lacakbuzzer-lacak-buzzer-backend.hf.space";
   return `${base}${path}`;
 };
 
