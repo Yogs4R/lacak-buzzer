@@ -254,19 +254,51 @@ Bagi anggota kelompok yang baru bergabung, ikuti langkah-langkah berikut:
    - Buat *branch* fitur: `git checkout -b nama-tugas`
    - Simpan perubahan: `git add .` lalu `git commit -m "feat: nama tugas"`
    - Unggah & gabungkan: `git push origin nama-tugas` lalu buat *Pull Request* di GitHub.
+### Panduan Kredensial & Berkas Konfigurasi
 
-### Backend (API)
+Semua berkas kredensial sensitif diabaikan oleh Git demi keamanan. Pengembang yang melakukan *clone* atau *fork* dapat menyiapkan berkas-berkas berikut menggunakan template `.example` yang telah disediakan:
+
+| Berkas Asli (Sensitif/Lokal) | Berkas Template (.example) | Tujuan Impor / Penempatan | Fungsi & Keterangan |
+|:---|:---|:---|:---|
+| `backend/secrets/firebase-key.json` | `backend/secrets/firebase-key.json.example` | Letakkan di `backend/secrets/` atau copy isinya ke env `FIREBASE_CREDENTIALS` | Service Account Google Cloud / Firebase Firestore untuk riwayat pemindaian & leaderboard. *(Opsional: jika tidak diisi, backend otomatis jalan dalam mode offline tanpa database).* |
+| `backend/twitter_accounts.json` | `backend/twitter_accounts.json.example` | Copy seluruh string JSON ke env `TWITTER_ACCOUNTS_JSON` di `.env` / Hugging Face Secrets | Kredensial dan session cookies (`auth_token` & `ct0`) untuk scraping X/Twitter tanpa API berbayar. |
+| `backend/accounts.txt` | `backend/accounts.txt.example` | Digunakan sebagai input CLI `twscrape add_accounts` | Format teks baris (`user:pass:email:email_pass`) untuk inisialisasi akun scraper secara manual via terminal. |
+| `accounts.db` | *(Dihasilkan Otomatis)* | Direktori backend atau `TWS_DATA_DIR` | Basis data SQLite sesi Twitter. Terbuat secara otomatis saat backend dijalankan jika `TWITTER_ACCOUNTS_JSON` terisi. |
+| `backend/data/rate_limits.json` | *(Dihasilkan Otomatis)* | Direktori `backend/data/` | Cache rate limit (IP website & mention bot). Terbuat secara otomatis saat runtime oleh aplikasi. |
+
+---
+
+### Cara 1: Menjalankan dengan Docker Compose (Direkomendasikan & Paling Mudah)
+
+Anda dapat menjalankan seluruh stack (Backend FastAPI + Frontend Nginx SPA) secara mandiri hanya dengan satu perintah:
+
+```bash
+# 1. Salin template konfigurasi environment
+cp .env.example .env
+
+# 2. Isi OPENROUTER_API_KEY dan TWITTER_ACCOUNTS_JSON pada file .env
+
+# 3. Jalankan seluruh layanan
+docker compose up --build
+```
+- **Website (Frontend):** [http://localhost:3000](http://localhost:3000)
+- **API Backend & Dokumentasi Swagger:** [http://localhost:8000/docs](http://localhost:8000/docs)
+
+---
+
+### Cara 2: Menjalankan Manual (Tanpa Docker)
+
+#### A. Backend (API)
 
 **Langkah 1: Setup Awal (Cukup dilakukan sekali)**
-Buka PowerShell, lalu jalankan perintah berikut untuk membuat *virtual environment* menggunakan Python 3.12 (Jangan lupa download python versi 3.12 di [python.org](https://www.python.org/downloads/)):
+Buka PowerShell, lalu jalankan perintah berikut untuk membuat *virtual environment* menggunakan Python 3.12:
 ```powershell
 cd backend
 py -3.12 -m venv venv
 ```
-*(Jika perintah `py` tidak dikenali, Anda bisa menggunakan `python -m venv venv` asalkan versi Python Anda adalah 3.12).*
+*(Jika perintah `py` tidak dikenali, gunakan `python -m venv venv` asalkan versi Python adalah 3.12).*
 
-**Langkah 2: Menjalankan Backend (Dilakukan setiap kali ingin menjalankan API)**
-Buka PowerShell, lalu jalankan perintah berikut secara berurutan:
+**Langkah 2: Menjalankan Backend**
 ```powershell
 cd backend
 # Aktifkan virtual environment
@@ -279,18 +311,35 @@ pip install -r requirements.txt
 uvicorn main:app --reload
 ```
 
-**Keluar dari Virtual Environment**
-Jika sudah selesai dan ingin menonaktifkan *virtual environment*, ketik perintah berikut di terminal:
+**Perintah twscrape CLI (Jika Menyiapkan Akun via `accounts.txt`):**
+```powershell
+# 1. Tambah akun dari file accounts.txt
+twscrape add_accounts accounts.txt username:password:email:email_password
+
+# 2. Login seluruh akun
+twscrape login_accounts
+
+# 3. Cek status akun
+twscrape accounts
+
+# 4. Relogin atau reset locks jika terblokir sementara
+twscrape relogin
+twscrape reset_locks
+```
+
+**Keluar dari Virtual Environment:**
 ```powershell
 deactivate
 ```
 
-### Frontend (Website)
+#### B. Frontend (Website)
 ```bash
 cd frontend
 npm install
 npm run dev
 ```
+
+---
 
 ## Status X Bot & Contoh Respon
 

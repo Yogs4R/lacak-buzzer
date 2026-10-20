@@ -136,20 +136,7 @@ Ekstensi peramban berbasis **Manifest V3** untuk memberikan akses inspeksi akun 
 
 ---
 
-## 5. Opsi Full Local / Self-Hosted Stack (`docker-compose.yml`)
-
-Memungkinkan siapapun menjalankan seluruh sistem Lacak Buzzer secara mandiri di mesin lokal atau server pribadi:
-
-- **Komponen Docker Compose:**
-  - `backend`: Menjalankan FastAPI, Sentence-Transformers lokal, dan worker twscrape.
-  - `frontend`: Menjalankan build Nginx/Vite yang otomatis terhubung ke backend lokal.
-- **Berkas Konfigurasi yang Dibutuhkan:**
-  - Sediakan `.env.example` yang memuat template akun scraper X (`TWITTER_COOKIES`) dan `OPENROUTER_API_KEY`.
-- **Keuntungan:** Tidak membebani kuota API maupun instance Hugging Face produksi.
-
----
-
-## 6. Rencana Dokumentasi Publik di Website
+## 5. Rencana Dokumentasi Publik di Website
 
 Apakah situs web [lacakbuzzer.web.id](https://lacakbuzzer.web.id) membutuhkan menu dokumentasi? **Ya, sangat direkomendasikan!**
 

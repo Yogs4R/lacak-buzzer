@@ -44,31 +44,76 @@ FastAPI backend API running inside a Docker container on Hugging Face Spaces.
 
 ---
 
+## Panduan Berkas Kredensial & Basis Data
+
+Seluruh berkas kredensial sensitif diabaikan oleh Git (`.gitignore`). Bagi pengembang atau yang melakukan fork/clone repositori ini, berikut adalah peta berkas, template example, dan tujuan impornya:
+
+| Berkas Asli (Sensitif/Lokal) | Berkas Contoh (.example) | Lokasi / Tujuan Impor | Fungsi & Keterangan |
+|:---|:---|:---|:---|
+| `backend/secrets/firebase-key.json` | `backend/secrets/firebase-key.json.example` | Disimpan di `backend/secrets/` ATAU di-paste isinya ke env `FIREBASE_CREDENTIALS` | Kunci Service Account Firebase Firestore untuk menyimpan riwayat scan dan leaderboard. Jika tidak diisi, backend otomatis berjalan dalam mode *offline/no-database*. |
+| `backend/twitter_accounts.json` | `backend/twitter_accounts.json.example` | Disalin isinya ke env `TWITTER_ACCOUNTS_JSON` di `.env`, Docker, atau Hugging Face Secrets | JSON array berisi kredensial dan cookie sesi Twitter (`auth_token` & `ct0`). Dibaca otomatis oleh `services/init_db.py` saat server startup. |
+| `backend/accounts.txt` | `backend/accounts.txt.example` | Digunakan sebagai input baris CLI `twscrape add_accounts` | Format teks baris alternatif (`user:pass:email:email_pass`) jika ingin mendaftarkan akun scraper Twitter secara manual lewat terminal. |
+| `accounts.db` | *(Dihasilkan Otomatis)* | Disimpan di direktori kerja atau folder `TWS_DATA_DIR` | Basis data SQLite lokal twscrape yang menyimpan status sesi akun scraper. Dibuat secara otomatis saat startup jika `TWITTER_ACCOUNTS_JSON` terisi, atau lewat CLI `twscrape login_accounts`. |
+| `backend/data/rate_limits.json` | *(Dihasilkan Otomatis)* | Direktori `backend/data/` | Cache penyimpanan rolling window rate limit (IP website & mention bot). Dibuat dan diperbarui secara otomatis saat runtime oleh `services/rate_limits.py` (tidak perlu dibuat manual). |
+
+---
+
 ## Setup & Inisialisasi Layanan
 
 ### 1. Kredensial Firebase Firestore
-Aplikasi menginisialisasi koneksi Firestore secara otomatis saat startup (lifespan hook).
-- Letakkan berkas kredensial service account di `backend/secrets/firebase-key.json` (diabaikan oleh Git).
+Aplikasi menginisialisasi koneksi Firestore secara otomatis saat startup (lifespan hook):
+- **Opsi Berkas Lokal:** Salin `backend/secrets/firebase-key.json.example` menjadi `backend/secrets/firebase-key.json` lalu isi dengan kunci asli dari Google Cloud Console.
+- **Opsi Cloud / Hugging Face:** Masukkan seluruh isi JSON service account ke variabel environment `FIREBASE_CREDENTIALS`.
 - Struktur database Firestore yang dihasilkan secara otomatis:
   - Koleksi `scan_history`: menyimpan riwayat pemindaian.
-  - Dokumen `metadata/global_stats`: menyimpan total counter pemindaian dan breakdown kategori secara atomik (`Rendah`, `Sedang`, `Tinggi`, `Ekstrem`).
+  - Dokumen `metadata/global_stats`: counter pemindaian dan breakdown kategori risiko secara atomik.
 
-### 2. Setup Scraper Twitter (`twscrape`)
-Scraper membutuhkan basis data lokal `accounts.db` untuk mengelola kredensial dan session Twitter.
-- Definisikan kredensial pada variabel environment `TWITTER_ACCOUNTS_JSON` dengan format JSON array:
-  ```json
-  [
-    {
-      "username": "akun_twitter",
-      "password": "password_twitter",
-      "email": "email_twitter@mail.com",
-      "email_password": "password_email",
-      "auth_token": "token_auth_cookies",
-      "ct0": "token_ct0_cookies"
-    }
-  ]
-  ```
-- Saat startup, lifespan hook backend akan menginisialisasi basis data `accounts.db` secara otomatis.
+### 2. Setup Scraper Twitter Otomatis (`TWITTER_ACCOUNTS_JSON`)
+Metode utama yang digunakan oleh sistem backend:
+1. Salin `backend/twitter_accounts.json.example` menjadi `backend/twitter_accounts.json` (atau langsung isi variabel `TWITTER_ACCOUNTS_JSON` di file `.env`):
+   ```json
+   [
+     {
+       "username": "akun_twitter",
+       "password": "password_twitter",
+       "email": "email_twitter@mail.com",
+       "email_password": "password_email",
+       "auth_token": "cookie_auth_token_dari_browser",
+       "ct0": "cookie_ct0_dari_browser"
+     }
+   ]
+   ```
+2. Saat startup, backend secara otomatis memanggil `init_twitter_db()` untuk membuat/memperbarui basis data `accounts.db` tanpa perlu menjalankan perintah CLI manual.
+
+### 3. Setup Scraper Twitter Manual via CLI (`accounts.txt`)
+Jika Anda lebih memilih mendaftarkan akun scraper secara manual lewat terminal CLI `twscrape`:
+
+1. Buat file `backend/accounts.txt` dari template `backend/accounts.txt.example`:
+   ```text
+   username_1:password_1:email_1@mail.com:email_password_1
+   username_2:password_2:email_2@mail.com:email_password_2
+   ```
+
+2. Jalankan perintah `twscrape` di terminal (pastikan virtual environment aktif):
+   ```bash
+   # Masuk ke direktori backend
+   cd backend
+
+   # 1. Tambahkan akun dari berkas accounts.txt ke basis data SQLite
+   twscrape add_accounts accounts.txt username:password:email:email_password
+
+   # 2. Login seluruh akun (akan melakukan autentikasi ke Twitter dan menyimpan cookie di accounts.db)
+   twscrape login_accounts
+
+   # 3. Periksa status seluruh akun yang terdaftar
+   twscrape accounts
+
+   # 4. Jika akun terkena challenge/butuh relogin ulang
+   twscrape relogin
+
+   # 5. Jika akun terkunci sementara karena rate limit Twitter
+   twscrape reset_locks
+   ```
 
 ---
 

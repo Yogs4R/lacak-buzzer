@@ -1,0 +1,10 @@
+[
+  {
+    "username": "contoh_akun_scraper_1",
+    "password": "password_akun_twitter_anda",
+    "email": "email_anda@domain.com",
+    "email_password": "password_email_anda",
+    "auth_token": "isi_dengan_cookie_auth_token_dari_browser",
+    "ct0": "isi_dengan_cookie_ct0_dari_browser"
+  }
+]

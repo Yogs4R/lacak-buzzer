@@ -1,0 +1,4 @@
+# Format baris: username:password:email:email_password
+# Satu baris per akun Twitter scraper
+akun_twitter_1:password_twitter_1:email_1@domain.com:password_email_1
+akun_twitter_2:password_twitter_2:email_2@domain.com:password_email_2
