@@ -35,7 +35,7 @@
 |---|---|
 | [Ridwan](https://github.com/Yogs4R) | Backend 1 |
 | [Dandy](https://github.com/dandy63609) | Backend 2 |
-| [Naufal](https://github.com/naufalid755) | Frontend 1 |
+| [Naufal](https://github.com/naufaldarma1) | Frontend 1 |
 | [Falen](https://github.com/luckywtrike-rgb) | Frontend 2 |
 
 ## Detail Tech Stack

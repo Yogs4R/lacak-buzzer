@@ -86,7 +86,7 @@ const SAFE_FALLBACK_CONTRIBUTORS = [
   { login: 'Yogs4R', html_url: 'https://github.com/Yogs4R', avatar_url: 'https://github.com/Yogs4R.png' },
   { login: 'luckywtrike-rgb', html_url: 'https://github.com/luckywtrike-rgb', avatar_url: 'https://github.com/luckywtrike-rgb.png' },
   { login: 'dandy63609', html_url: 'https://github.com/dandy63609', avatar_url: 'https://github.com/dandy63609.png' },
-  { login: 'naufalid755', html_url: 'https://github.com/naufalid755', avatar_url: 'https://github.com/naufalid755.png' }
+  { login: 'naufaldarma1', html_url: 'https://github.com/naufaldarma1', avatar_url: 'https://github.com/naufaldarma1.png' }
 ];
 
 const sanitizeContributors = (data) => {
