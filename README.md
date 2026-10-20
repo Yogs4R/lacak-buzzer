@@ -177,12 +177,12 @@ $$A_{\text{rate}} = \frac{N}{\text{Active Days}}$$
 #### D. Rasio Tautan ($R_{\text{url}}$) & Media ($R_{\text{photo}}$)
 Proporsi posting yang memuat link eksternal atau lampiran gambar/video:
 
-$$R_{\text{url}} = \frac{\sum [\,\text{has\_url}_i\,]}{N}, \quad R_{\text{photo}} = \frac{\sum [\,\text{has\_media}_i\,]}{N}$$
+$$R_{\text{url}} = \frac{\text{Jumlah Tweet dengan URL}}{N}, \quad R_{\text{photo}} = \frac{\text{Jumlah Tweet dengan Media}}{N}$$
 
 #### E. Perilaku Interaksi ($R_{\text{mention}}$ & $R_{\text{reply}}$)
 Proporsi posting yang menyebut akun lain (*mention*) atau merupakan balasan (*reply*):
 
-$$R_{\text{mention}} = \frac{\sum [\,\text{has\_mention}_i\,]}{N}, \quad R_{\text{reply}} = \frac{\sum [\,\text{is\_reply}_i\,]}{N}$$
+$$R_{\text{mention}} = \frac{\text{Jumlah Tweet dengan Mention}}{N}, \quad R_{\text{reply}} = \frac{\text{Jumlah Tweet Balasan}}{N}$$
 
 #### F. Parameter Keaslian Akun ($P_{\text{risk}}$)
 Menilai risiko awal berdasarkan umur akun sejak tanggal pendaftaran dan kelengkapan bio:
