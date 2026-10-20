@@ -1,0 +1,14 @@
+title = "Lacak Buzzer Gitleaks Configuration"
+
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Global allowlist for example, mock, and template files"
+paths = [
+    '''.*\.example$''',
+    '''\.env\.example$''',
+    '''backend/secrets/firebase-key\.json\.example''',
+    '''backend/twitter_accounts\.json\.example''',
+    '''backend/accounts\.txt\.example'''
+]

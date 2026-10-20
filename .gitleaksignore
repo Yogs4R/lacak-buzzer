@@ -1,0 +1,2 @@
+# Gitleaks ignore list for false positive example template commits
+14bc3fc3df9af73331572a5eec861cd1f3715544:backend/secrets/firebase-key.json.example:private-key:5
