@@ -17,6 +17,7 @@
   - [Arsitektur Sistem](#arsitektur-sistem)
   - [Diagram Alur Analisis Baru (Request Flow)](#diagram-alur-analisis-baru-request-flow)
   - [Diagram Alur Mengambil Riwayat (History Flow)](#diagram-alur-mengambil-riwayat-history-flow)
+- [Metodologi & Formula Penilaian (Scoring & Feature Extraction)](#metodologi--formula-penilaian-scoring--feature-extraction)
 - [Struktur Proyek](#struktur-proyek)
 - [Tabel Keamanan (Security Table)](#tabel-keamanan-security-table)
 - [Instalasi & Cara Menjalankan](#instalasi--cara-menjalankan)
@@ -131,6 +132,141 @@ sequenceDiagram
         FE-->>User: Tampilkan Pesan Error
     end
 ```
+
+---
+
+## Metodologi & Formula Penilaian (Scoring & Feature Extraction)
+
+Sistem **Lacak Buzzer** dirancang transparan, deterministik, dan dapat diuji secara terbuka (*white-box*). Seluruh proses penilaian profil dilakukan melalui dua tahap: **Ekstraksi Fitur Perilaku** ([backend/services/feature_extraction.py](backend/services/feature_extraction.py)) dan **Formula Pembobotan Risiko Tetap** ([backend/services/scoring.py](backend/services/scoring.py)).
+
+> [!IMPORTANT]
+> **Prinsip Keamanan Produk:**  
+> Skor yang dihasilkan adalah **Indikator Risiko Amplifikasi Terkoordinasi (0–100)** berbasis pola statistik perilaku. Formula ini **bukan bukti hukum/ilmiah** bahwa suatu akun adalah buzzer, bot bayaran, palsu, memiliki agenda politik, atau terkoordinasi secara jahat.
+
+```text
+Skor ini adalah indikator risiko berbasis pola perilaku, bukan bukti bahwa akun tersebut terkoordinasi, palsu, dibayar, atau memiliki niat tertentu.
+```
+
+---
+
+### 1. Ekstraksi Fitur Statistik Perilaku
+
+Sistem mengumpulkan maksimum 100 tweet terkini dari target dan mengekstrak 7 parameter perilaku:
+
+#### A. Kemiripan Semantik Antar-Pesan ($S_{\text{sim}}$)
+Menggunakan model Sentence-Transformers lokal `sentence-transformers/all-MiniLM-L6-v2` (berjalan hemat memori pada CPU 2GB). Setiap teks tweet diubah menjadi vektor *embedding* $e_i \in \mathbb{R}^{384}$. Tingkat kemiripan dihitung dari rata-rata *Cosine Similarity* seluruh pasangan tweet unik:
+
+$$\text{CosineSim}(e_i, e_j) = \frac{e_i \cdot e_j}{\|e_i\|_2 \|e_j\|_2}$$
+
+$$S_{\text{sim}} = \frac{1}{\binom{N}{2}} \sum_{1 \le i < j \le N} \text{CosineSim}(e_i, e_j), \quad S_{\text{sim}} \in [0.0, 1.0]$$
+
+*Interpretasi: Nilai tinggi mengindikasikan akun sering mengulang narasi atau template teks serupa secara masif (copy-paste / blast messaging).*
+
+#### B. Kepadatan Tagar ($H_{\text{avg}}$)
+Rata-rata jumlah tagar (*hashtags*) per tweet:
+
+$$H_{\text{avg}} = \frac{\sum_{i=1}^{N} \text{Count}(\text{Hashtags}_i)}{N}$$
+
+#### C. Intensitas Aktivitas Harian ($A_{\text{rate}}$)
+Frekuensi rata-rata posting per hari berdasarkan rentang waktu tweet tertua dan terbaru:
+
+$$\text{Active Days} = \max\left(1.0, \frac{t_{\max} - t_{\min}}{86400}\right)$$
+
+$$A_{\text{rate}} = \frac{N}{\text{Active Days}}$$
+
+#### D. Rasio Tautan ($R_{\text{url}}$) & Media ($R_{\text{photo}}$)
+Proporsi posting yang memuat link eksternal atau lampiran gambar/video:
+
+$$R_{\text{url}} = \frac{\sum [\,\text{has\_url}_i\,]}{N}, \quad R_{\text{photo}} = \frac{\sum [\,\text{has\_media}_i\,]}{N}$$
+
+#### E. Perilaku Interaksi ($R_{\text{mention}}$ & $R_{\text{reply}}$)
+Proporsi posting yang menyebut akun lain (*mention*) atau merupakan balasan (*reply*):
+
+$$R_{\text{mention}} = \frac{\sum [\,\text{has\_mention}_i\,]}{N}, \quad R_{\text{reply}} = \frac{\sum [\,\text{is\_reply}_i\,]}{N}$$
+
+#### F. Parameter Keaslian Akun ($P_{\text{risk}}$)
+Menilai risiko awal berdasarkan umur akun sejak tanggal pendaftaran dan kelengkapan bio:
+
+$$\text{Age}_{\text{days}} = \frac{t_{\text{now}} - t_{\text{created}}}{86400}$$
+
+$$P_{\text{risk}} = \begin{cases} 70, & \text{jika } \text{Age}_{\text{days}} < 90 \\ 0, & \text{lainnya} \end{cases} + \begin{cases} 30, & \text{jika Bio kosong} \\ 0, & \text{lainnya} \end{cases}$$
+
+#### G. Entropi Interval Waktu Posting ($E$)
+Mengukur tingkat keacakan jeda waktu posting $\Delta t_i = t_{i} - t_{i-1}$ ke dalam 9 *time bins* (0–1 jam, 1–2 jam, ..., >24 jam) menggunakan **Shannon Entropy**:
+
+$$H = -\sum_{k=1}^{K} p_k \log_2(p_k), \quad E = \frac{H}{\log_2(K)} \in [0.0, 1.0]$$
+
+*Interpretasi: Entropi rendah ($E \to 0$) berarti jeda waktu antar-tweet sangat konsisten dan terjadwal secara mekanis (otomatisasi / cron bot).*
+
+---
+
+### 2. Normalisasi Metrik ke Skala Baku (0–100)
+
+Sebelum pembobotan, seluruh metrik mentah dipetakan ke skala terstandardisasi $[0, 100]$:
+
+| Komponen Metrik ($M_i$) | Rumus Normalisasi Internal | Bobot ($w_i$) | Indikator |
+|:---|:---|:---:|:---|
+| **Semantic Similarity** ($M_{\text{sim}}$) | $S_{\text{sim}} \times 100$ | **30%** | Tingkat pengulangan narasi pesan |
+| **Hashtag Density** ($M_{\text{hash}}$) | $\min\left(\frac{H_{\text{avg}}}{4} \times 100, 100\right)$ | **20%** | Kepadatan spam tagar kampanye |
+| **Activity Intensity** ($M_{\text{act}}$) | $\min\left(\frac{A_{\text{rate}}}{80} \times 100, 100\right)$ | **15%** | Intensitas posting harian abnormal |
+| **Media & URL Ratio** ($M_{\text{media}}$) | $(R_{\text{url}} \times 60) + (R_{\text{photo}} \times 40)$ | **10%** | Penyebaran tautan keluar dan media |
+| **Interaction Behavior** ($M_{\text{int}}$) | $(R_{\text{mention}} \times 50) + (R_{\text{reply}} \times 50)$ | **10%** | Pola interaksi balasan/mention terarah |
+| **Profile Risk** ($M_{\text{prof}}$) | $\min(P_{\text{risk}}, 100)$ | **10%** | Akun baru dibuat (<90 hari) & bio kosong |
+| **Interval Regularity** ($M_{\text{intv}}$) | $(1 - E) \times 100$ | **5%** | Keteraturan jeda posting (jadwal otomatis) |
+
+---
+
+### 3. Formula Skor Dasar (Raw Score)
+
+Kombinasi linear berbobot dari seluruh metrik terstandardisasi:
+
+$$S_{\text{base}} = \sum_{i=1}^{7} w_i M_i$$
+
+$$S_{\text{base}} = 0.30 M_{\text{sim}} + 0.20 M_{\text{hash}} + 0.15 M_{\text{act}} + 0.10 M_{\text{media}} + 0.10 M_{\text{int}} + 0.10 M_{\text{prof}} + 0.05 M_{\text{intv}}$$
+
+$$S = \min(S_{\text{base}}, 100)$$
+
+---
+
+### 4. Mekanisme Anti-False-Positive (Reducers)
+
+Untuk mencegah akun personal aktif, jurnalis, atau kreator konten mendapatkan skor risiko tinggi secara tidak sengaja, sistem menerapkan pengurang skor otomatis (*penalty reducers*):
+
+```python
+diversity_score = 1 - semantic_similarity
+
+# 1. Reduksi Keberagaman Topik: narasi tweet sangat bervariasi
+if diversity_score > 0.6:
+    final_score *= 0.70
+
+# 2. Reduksi Aktivitas Rendah: frekuensi posting wajar di bawah 5 tweet/hari
+if posts_per_day < 5:
+    final_score *= 0.80
+
+# 3. Reduksi Percakapan Alami: bukan akun yang terus-menerus reply/mention terarah
+if reply_ratio < 0.3 and mention_ratio < 0.3:
+    final_score *= 0.85
+```
+
+Skor akhir dibatasi dalam rentang $[0, 100]$ dan dibulatkan:
+
+$$\text{Skor Akhir} = \text{round}\Big(\max\big(0, \min(S, 100)\big)\Big)$$
+
+---
+
+### 5. Klasifikasi Kategori Risiko (Risk Bands) & Kepercayaan
+
+| Rentang Skor | Kategori Risiko (*Risk Band*) | Karakteristik Perilaku |
+|:---:|:---:|:---|
+| **0 – 35** | 🟢 **Rendah** | Aktivitas organik, topik percakapan bervariasi, pola waktu alami. |
+| **36 – 65** | 🟡 **Sedang** | Terdeteksi pola repetisi ringan atau intensitas posting tertentu. |
+| **66 – 85** | 🟠 **Tinggi** | Terdeteksi kemiripan pesan kuat, kepadatan tagar padat, atau pola terjadwal. |
+| **86 – 100** | 🔴 **Ekstrem** | Kombinasi repetisi teks sangat tinggi, akun baru, aktivitas posting sangat intensif. |
+
+#### Tingkat Kepercayaan (*Confidence Level*)
+- **< 10 Tweet:** *Insufficient Data* (sistem menolak kalkulasi skor demi menjaga keadilan analisis).
+- **10 – 49 Tweet:** **Rendah** (*"Kepercayaan hasil rendah karena jumlah tweet yang tersedia terbatas."*).
+- **$\ge$ 50 Tweet:** **Normal** (data cukup representatif untuk evaluasi statistik).
 
 ---
 
