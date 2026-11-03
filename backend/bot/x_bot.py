@@ -307,6 +307,15 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                             if not t_user and hasattr(n.tweet, "user") and n.tweet.user:
                                 t_user = getattr(n.tweet.user, "screen_name", "")
 
+                            # Abaikan jika tweet dari bot itu sendiri
+                            if t_user.lower() == bot_username.lower():
+                                continue
+
+                            # Abaikan tweet lama jika last_seen_id sudah terpasang
+                            if last_seen_id and t_id.isdigit() and last_seen_id.isdigit():
+                                if int(t_id) <= int(last_seen_id):
+                                    continue
+
                             if t_id and t_text:
                                 incoming_mentions.append({
                                     "id": t_id,
@@ -316,23 +325,35 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                                 })
                 except Exception as e:
                     print(f"   [Twikit Notifications] Catatan: {e}")
+                    # Self-healing: reset client_transaction bila state tersangkut
+                    if hasattr(twikit_client, "client_transaction") and twikit_client.client_transaction:
+                        twikit_client.client_transaction.home_page_response = None
 
             # 2. Twscrape Search (Solusi 1)
             try:
-                if last_seen_id:
-                    query = f"@{bot_username} since_id:{last_seen_id}"
-                else:
-                    since_ts = int(time.time()) - max(poll_interval * 10, 600)
-                    query = f"@{bot_username} since_time:{since_ts}"
+                # Query pencarian murni di Twitter Web GraphQL tanpa operator yang tidak didukung
+                query = f"@{bot_username}"
 
                 raw_tweets = await gather(
                     scraper_api.search(query, limit=20, kv={"product": "Latest"})
                 )
                 for t in raw_tweets:
+                    t_id = str(t.id)
+                    t_user = getattr(t.user, "username", "")
+
+                    # Abaikan jika tweet dari bot itu sendiri
+                    if t_user.lower() == bot_username.lower():
+                        continue
+
+                    # Abaikan tweet lama jika last_seen_id sudah terpasang
+                    if last_seen_id and t_id.isdigit() and last_seen_id.isdigit():
+                        if int(t_id) <= int(last_seen_id):
+                            continue
+
                     incoming_mentions.append({
-                        "id": str(t.id),
+                        "id": t_id,
                         "text": getattr(t, "rawContent", "") or getattr(t, "text", ""),
-                        "requester": getattr(t.user, "username", ""),
+                        "requester": t_user,
                         "source": "twscrape_search"
                     })
             except Exception as e:
