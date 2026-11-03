@@ -4,8 +4,6 @@ import ResultCard from '../components/ResultCard';
 import { useSEO } from '../hooks/useSEO';
 
 const getApiUrl = (path) => {
-  // Jika import.meta.env.VITE_API_URL didefinisikan (meskipun string kosong ""), gunakan itu.
-  // String kosong berguna untuk reverse proxy same-origin (seperti Docker Nginx atau Vite dev).
   if (import.meta.env.VITE_API_URL !== undefined) {
     return `${import.meta.env.VITE_API_URL}${path}`;
   }
@@ -41,8 +39,6 @@ const analyzeApi = async (target) => {
   return await response.json();
 };
 
-// Sub-komponen reusable untuk merender kolom leaderboard
-// Dibuat terpisah untuk menghindari duplikasi kode dan menekan cognitive complexity (Fallow warning).
 function LeaderboardBox({ title, items, onFetchHistory, getBadgeStyle }) {
   return (
     <div className="card border border-borderCustom p-5 flex flex-col min-h-[260px]">
@@ -99,18 +95,12 @@ const sanitizeContributors = (data) => {
       if (!item || typeof item !== 'object') return false;
       const login = item.login;
       if (!login || typeof login !== 'string') return false;
-      
-      // Exclude bots
       if (login.toLowerCase().includes('[bot]') || item.type === 'Bot') return false;
-      
-      // Validate characters of username (Anti-XSS)
       if (!githubUserRegex.test(login)) return false;
       
-      // Validate Profile URL (Anti-Link Injection)
       const htmlUrl = item.html_url;
       if (!htmlUrl || typeof htmlUrl !== 'string' || !htmlUrl.startsWith('https://github.com/')) return false;
       
-      // Validate Avatar URL
       const avatarUrl = item.avatar_url;
       if (!avatarUrl || typeof avatarUrl !== 'string') return false;
       const isSecureAvatar = avatarUrl.startsWith('https://avatars.githubusercontent.com/') || avatarUrl.startsWith('https://github.com/');
@@ -147,7 +137,7 @@ function ContributorsSection({ contributors }) {
             href={c.html_url}
             target="_blank"
             rel="noopener noreferrer"
-            className="card p-4 flex flex-col items-center justify-center gap-3 hover:border-[#f97316] hover:scale-105 transition-all duration-300 w-28 h-28 cursor-pointer group"
+            className="card p-4 flex flex-col items-center justify-center gap-3 hover:border-[#f97316] hover:scale-105 transition-all duration-300 w-28 h-28 cursor-pointer group rounded-xl"
           >
             <img
               src={c.avatar_url}
@@ -168,92 +158,70 @@ function ContributorsSection({ contributors }) {
   );
 }
 
-function HeroSection({ scannedCount }) {
+// HeroSection: Bagian akhir adalah Micro Trust Indicators, garis pembatas tidak masuk di sini
+function HeroSection({ isLoading, handleAnalyze }) {
   return (
-    <section className="hero-centered animate-fade-in-up">
-      <p className="eyebrow">
+    <section className="animate-fade-in-up w-full max-w-4xl mx-auto flex flex-col items-center justify-center text-center pt-24 sm:pt-32 md:pt-36 pb-16 sm:pb-24 min-h-[calc(100vh-80px)]">
+      <p className="eyebrow tracking-[0.2em] text-[11px] sm:text-xs uppercase font-semibold text-zinc-400 mb-4 sm:mb-5">
         ANALISIS INTELIJEN SOSIAL
       </p>
-      <h1 className="hero-headline text-center mt-4 max-w-[800px]">
+      
+      <h1 className="text-[26px] min-[380px]:text-[30px] sm:text-5xl md:text-[56px] lg:text-6xl font-bold text-ink tracking-tight leading-[1.25] sm:leading-[1.12] text-center max-w-[840px] px-2">
         Indikator Risiko Amplifikasi Terkoordinasi
       </h1>
-      <p className="mt-5 max-w-[600px] text-[18px] text-bodyText leading-relaxed text-center">
-        Analisis pola perilaku akun X/Twitter secara singkat dan ramah, dengan fokus pada indikator risiko berbasis perilaku.
+      
+      <p className="mt-4 sm:mt-6 max-w-[620px] text-[13px] min-[380px]:text-[14px] sm:text-[16px] text-zinc-400 leading-relaxed text-center px-3 sm:px-0">
+        Analisis pola perilaku akun X/Twitter secara instan, dengan fokus pada deteksi anomali repetisi dan indikator risiko berbasis perilaku.
       </p>
 
-      {/* Centered Stats Row */}
-      <div className="stat-row mt-8 justify-center">
-        <div className="stat-item px-6">
-          <p className="stat-number">0 - 100</p>
-          <p className="stat-label">Skala Indikator</p>
-        </div>
-        <div className="stat-item px-6 border-l border-r border-borderCustom">
-          <p className="stat-number">15.0s</p>
-          <p className="stat-label">Waktu Analisis</p>
-        </div>
-        <div className="stat-item px-6">
-          <p className="stat-number">{scannedCount.toLocaleString('id-ID')}</p>
-          <p className="stat-label">Akun Dipindai</p>
-        </div>
+      {/* Prominent Omnibar directly in the Hero */}
+      <div className="w-full max-w-2xl mt-8 sm:mt-10 px-2 sm:px-0">
+        <SearchBar loading={isLoading} onSubmit={handleAnalyze} />
+      </div>
+
+      {/* Micro Trust Indicators (Bagian Akhir Hero Section — leakcheck.io style) */}
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-3 sm:gap-7 mt-8 sm:mt-10 text-[12px] sm:text-[13px] text-zinc-400">
+        <span className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-[#f97316] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />
+          </svg>
+          <span>Indikator Berbasis Perilaku</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-[#f97316] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
+          </svg>
+          <span>Analisis Real-time</span>
+        </span>
+        <span className="flex items-center gap-2">
+          <svg className="w-4 h-4 text-[#f97316] shrink-0" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />
+          </svg>
+          <span>Stateless & Bebas Registrasi</span>
+        </span>
       </div>
     </section>
   );
 }
 
-function AnalysisSection({ isLoading, handleAnalyze }) {
-  const [activeTab, setActiveTab] = useState('Username');
-
+// Sesi Statistik Platform (Terpisah di luar Hero Section dengan Garis Pembatas)
+function PlatformStatsSection({ scannedCount }) {
   return (
-    <section className="animate-fade-in-up delay-100 max-w-[650px] w-full mx-auto mb-12">
-      <div className="card shadow-[0_20px_50px_rgba(0,0,0,0.45)] p-8">
-        <p className="eyebrow mb-4">
-          ANALISIS TARGET
-        </p>
-
-        {/* Tab Bar */}
-        <div className="bg-canvas rounded-lg p-1 flex gap-1 mb-5">
-          {['Username', 'URL Tweet', 'Bulk'].map((tab) => {
-            const isUsername = tab === 'Username';
-            const isActive = activeTab === tab;
-            return (
-              <button
-                key={tab}
-                disabled={!isUsername}
-                onClick={() => isUsername && setActiveTab(tab)}
-                className={`flex-1 border-none rounded-btn py-2 px-4 font-semibold text-[13px] transition-all duration-200 ${
-                  isActive
-                    ? 'bg-brand-gradient text-ink'
-                    : isUsername
-                    ? 'bg-transparent text-mutedText hover:text-ink cursor-pointer'
-                    : 'bg-transparent text-placeholderText cursor-not-allowed'
-                }`}
-              >
-                {tab}
-                {!isUsername && (
-                  <span className="text-[9px] bg-borderCustom px-1.5 py-0.5 rounded text-mutedText font-normal ml-1">
-                    Soon
-                  </span>
-                )}
-              </button>
-            );
-          })}
+    <section className="w-full max-w-4xl mx-auto mt-20 sm:mt-28 pt-10 sm:pt-14 border-t border-borderCustom/40 px-4">
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 text-center">
+        <div className="card p-5 sm:p-6 flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-[#121215]/60 hover:border-white/10 transition-colors shadow-lg">
+          <p className="text-2xl sm:text-3xl font-bold text-[#f97316] font-mono">0 — 100</p>
+          <p className="text-[11px] sm:text-xs font-semibold text-mutedText mt-2 uppercase tracking-wider">Skala Indikator</p>
         </div>
-
-        {/* Input Row and Search */}
-        <div className="bg-canvas rounded-lg border border-borderCustom p-4">
-          <SearchBar loading={isLoading} onSubmit={handleAnalyze} />
+        <div className="card p-5 sm:p-6 flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-[#121215]/60 hover:border-white/10 transition-colors shadow-lg">
+          <p className="text-2xl sm:text-3xl font-bold text-[#f97316] font-mono">15.0s</p>
+          <p className="text-[11px] sm:text-xs font-semibold text-mutedText mt-2 uppercase tracking-wider">Waktu Analisis</p>
         </div>
-
-        {/* Info Message */}
-        <div className="mt-4 bg-canvas rounded-lg border border-borderCustom p-4">
-          <p className="text-sm leading-relaxed text-bodyText">
-            {activeTab === 'Username' &&
-              'Masukkan username target tanpa simbol @ untuk menganalisis risiko perilaku profil.'}
-            {activeTab === 'URL Tweet' &&
-              'Masukkan URL tweet lengkap untuk menganalisis interaksi dan penyebaran semantik tweet tersebut.'}
-            {activeTab === 'Bulk' &&
-              'Masukkan beberapa username yang dipisahkan oleh tanda koma untuk menganalisis secara massal.'}
+        <div className="card p-5 sm:p-6 flex flex-col items-center justify-center rounded-2xl border border-white/5 bg-[#121215]/60 hover:border-white/10 transition-colors shadow-lg">
+          <p className="text-2xl sm:text-3xl font-bold text-[#f97316] font-mono">
+            {scannedCount ? scannedCount.toLocaleString('id-ID') : '0'}
           </p>
+          <p className="text-[11px] sm:text-xs font-semibold text-mutedText mt-2 uppercase tracking-wider">Akun Dipindai</p>
         </div>
       </div>
     </section>
@@ -334,11 +302,9 @@ export default function Home() {
     }
   };
 
-  // Fetch global stats, leaderboard, and contributors on mount
   useEffect(() => {
     fetchStatsAndLeaderboard(false);
 
-    // Load last analysis result from sessionStorage
     const cachedResult = sessionStorage.getItem('lastAnalysisResult');
     if (cachedResult) {
       try {
@@ -373,7 +339,6 @@ export default function Home() {
     setErrorText('');
     setStatusText(`Menganalisis pola perilaku ${target}...`);
 
-    // Scroll to resultsRef where loading spinner is displayed
     setTimeout(() => {
       resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'center' });
     }, 100);
@@ -382,7 +347,6 @@ export default function Home() {
       const data = await analyzeApi(target);
       setResultData(data);
       sessionStorage.setItem('lastAnalysisResult', JSON.stringify(data));
-      // Refresh stats & leaderboard to reflect the new scan (force refresh)
       fetchStatsAndLeaderboard(true);
     } catch (err) {
       setErrorText(err.message || 'Terjadi kesalahan saat menganalisis.');
@@ -432,7 +396,6 @@ export default function Home() {
 
   useEffect(() => {
     if (resultData) {
-      // Scroll to results when data loaded
       setTimeout(() => {
         resultsRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' });
       }, 100);
@@ -459,17 +422,23 @@ export default function Home() {
   };
 
   return (
-    <div className="min-h-screen bg-canvas text-ink">
-      <main className="mx-auto flex w-full max-w-6xl flex-col px-4 pb-16 pt-8 sm:px-6 lg:px-8">
+    <div className="min-h-screen bg-canvas text-ink relative overflow-x-hidden">
+      {/* Subtle Ambient Radial Glow (LeakCheck Cyber Security Aesthetic) */}
+      <div 
+        aria-hidden="true" 
+        className="pointer-events-none absolute top-0 left-1/2 -translate-x-1/2 w-full max-w-5xl h-[550px] bg-[radial-gradient(ellipse_70%_50%_at_50%_0%,rgba(249,115,22,0.07),transparent_75%)]"
+      />
+
+      <main className="relative mx-auto flex w-full max-w-6xl flex-col px-4 pb-16 sm:px-6 lg:px-8">
         
-        {/* Centered Hero Section */}
-        <HeroSection scannedCount={scannedCount} />
+        {/* Above-The-Fold Clean Hero Section (Berakhir di Trust Indicators) */}
+        <HeroSection 
+          isLoading={isLoading} 
+          handleAnalyze={handleAnalyze} 
+        />
 
-        {/* Centered Analysis Card */}
-        <AnalysisSection isLoading={isLoading} handleAnalyze={handleAnalyze} />
-
-        {/* Results / Loader section */}
-        <div ref={resultsRef} className="w-full max-w-[900px] mx-auto">
+        {/* Results / Loader section (Muncul di bawah Hero jika ada analisa) */}
+        <div ref={resultsRef} className="w-full max-w-[900px] mx-auto mt-6">
           {isLoading && (
             <div className="card animate-fade-in p-8 flex flex-col items-center justify-center gap-5 text-center">
               <span className="inline-block h-10 w-10 animate-spin rounded-full border-4 border-[#f97316] border-t-transparent" />
@@ -504,6 +473,9 @@ export default function Home() {
             </div>
           )}
         </div>
+
+        {/* Platform Overview Stats Row (Di Luar Hero Section dengan Garis Pembatas Atas) */}
+        <PlatformStatsSection scannedCount={scannedCount} />
 
         {/* 4 Boxes Section (Stats & Leaderboard) */}
         {!isLoading && (
