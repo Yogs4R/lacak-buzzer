@@ -1,16 +1,65 @@
-# Lacak Buzzer
+<p align="center">
+  <img src="frontend/public/og-image.png" alt="Lacak Buzzer Banner" width="70%" />
+</p>
 
-![License](https://img.shields.io/github/license/Yogs4R/lacak-buzzer?style=for-the-badge&color=e03a1e)
-![Python](https://img.shields.io/badge/Python-3.10+-3776AB?style=for-the-badge&logo=python&logoColor=white)
-![FastAPI](https://img.shields.io/badge/FastAPI-005571?style=for-the-badge&logo=fastapi)
-![Firebase](https://img.shields.io/badge/firebase-%23039BE5.svg?style=for-the-badge&logo=firebase&logoColor=FFCA28)
-![React](https://img.shields.io/badge/React-20232A?style=for-the-badge&logo=react&logoColor=61DAFB)
-![Vite](https://img.shields.io/badge/Vite-B73BFE?style=for-the-badge&logo=vite&logoColor=FFD62E)
+<h1 align="center">Lacak Buzzer</h1>
 
-![Lacak Buzzer](frontend/public/og-image.png)
+<p align="center">
+  <b>Indikator Risiko Amplifikasi Terkoordinasi pada Akun X/Twitter</b><br>
+  Analisis Pola Perilaku Akun X secara Instan & Deterministik · Powered by FastAPI, Sentence-Transformers, twscrape & React
+</p>
+
+<p align="center">
+  <a href="https://github.com/Yogs4R/lacak-buzzer/releases"><img src="https://img.shields.io/github/v/release/Yogs4R/lacak-buzzer?style=flat-square&color=orange" alt="Release" /></a>
+  <img src="https://img.shields.io/badge/Python-3.12-3776AB?style=flat-square&logo=python&logoColor=white" alt="Python" />
+  <img src="https://img.shields.io/badge/FastAPI-0.110+-009688?style=flat-square&logo=fastapi&logoColor=white" alt="FastAPI" />
+  <img src="https://img.shields.io/badge/React-18-61DAFB?style=flat-square&logo=react&logoColor=black" alt="React" />
+  <img src="https://img.shields.io/badge/Vite-8-B73BFE?style=flat-square&logo=vite&logoColor=white" alt="Vite" />
+  <img src="https://img.shields.io/badge/TailwindCSS-3.4-38B2AC?style=flat-square&logo=tailwind-css&logoColor=white" alt="Tailwind CSS" />
+  <img src="https://img.shields.io/badge/Database-Firestore-FFCA28?style=flat-square&logo=firebase&logoColor=black" alt="Firestore" />
+  <img src="https://img.shields.io/badge/License-Apache_2.0-blue?style=flat-square" alt="License" />
+</p>
+
+<p align="center">
+  <a href="#apa-itu-lacak-buzzer">Tentang</a> •
+  <a href="#preview">Preview</a> •
+  <a href="#detail-tech-stack">Tech Stack</a> •
+  <a href="#arsitektur-sistem--alur-request-workflows">Arsitektur</a> •
+  <a href="#metodologi--formula-penilaian-scoring--feature-extraction">Metodologi</a> •
+  <a href="#instalasi--cara-menjalankan">Instalasi</a> •
+  <a href="#tabel-keamanan-security-table">Keamanan</a>
+</p>
+
+---
+
+## Apa itu Lacak Buzzer?
+
+**Lacak Buzzer** adalah platform intelijen sosial open-source yang menganalisis profil dan riwayat postingan publik akun X (Twitter) untuk menghasilkan **Indikator Risiko Amplifikasi Terkoordinasi (skor 0–100)**. Sistem ini memperkirakan anomali pola perilaku—seperti repetisi pesan, kepadatan tagar, intensitas aktivitas, dan ritme waktu posting—secara matematis dan deterministik.
+
+* **🎯 Indikator Risiko Objektif (Bukan Tuduhan):** Menilai jejak perilaku linimasa tanpa pernah mengklaim bahwa suatu akun pasti palsu, berbayar, atau berafiliasi politik tertentu.
+* **🤖 Dual Surface (Website & X Bot):** Analisis dapat diakses langsung melalui antarmuka web modern di [lacakbuzzer.web.id](https://lacakbuzzer.web.id) atau cukup dengan me-mention bot resmi [@lacakbuzzer](https://x.com/lacakbuzzer) di Twitter/X.
+* **🧠 Model NLP Lokal (MiniLM-L6-v2):** Menghitung kemiripan semantik antar-tweet menggunakan model *Sentence-Transformers* yang berjalan lokal di server tanpa mengirim konten tweet mentah ke pihak ketiga.
+* **🔒 100% Stateless & Privacy-First:** Membaca postingan publik secara live tanpa menyimpan teks tweet mentah ke dalam database demi menjaga privasi penuh pengguna.
+* **⚡ Formula Baku & Transparan:** Dilengkapi sistem penilaian matematis 7 parameter dan logika peredam anti-false-positive yang terbuka untuk diaudit.
+
+---
+
+## Preview
+
+<p align="center">
+  <img src="docs/assets/preview-website.png" alt="Tampilan Hasil Analisis Website" width="48%" />
+  &nbsp;
+  <img src="docs/assets/preview-bot.png" alt="Tampilan Balasan Bot X" width="48%" />
+</p>
+<p align="center">
+  <i>Kiri: Tampilan hasil analisis di Website (<a href="https://lacakbuzzer.web.id">lacakbuzzer.web.id</a>) • Kanan: Balasan publik otomatis dari Bot X (<a href="https://x.com/lacakbuzzer">@lacakbuzzer</a>)</i>
+</p>
+
+---
 
 ## Daftar Isi
-- [Deskripsi Proyek](#deskripsi-proyek)
+- [Apa itu Lacak Buzzer?](#apa-itu-lacak-buzzer)
+- [Preview](#preview)
 - [Anggota Kelompok](#anggota-kelompok)
 - [Detail Tech Stack](#detail-tech-stack)
 - [Arsitektur Sistem & Alur Request (Workflows)](#arsitektur-sistem--alur-request-workflows)
@@ -26,9 +75,6 @@
 - [Catatan Keamanan](#catatan-keamanan)
 
 ---
-
-## Deskripsi Proyek
-**Lacak Buzzer** adalah sistem *Minimum Viable Product* (MVP) ringan yang menganalisis profil dan aktivitas akun X/Twitter untuk memberikan **Indikator Risiko Amplifikasi Terkoordinasi**. Sistem ini memperkirakan pola perilaku seperti repetisi, intensitas aktivitas, dan interaksi tanpa mengklaim akun tersebut palsu, berbayar, atau berafiliasi secara definitif.
 
 ## Anggota Kelompok
 | Nama | Tugas (Backend/Frontend) |
