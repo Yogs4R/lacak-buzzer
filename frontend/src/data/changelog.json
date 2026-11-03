@@ -1,8 +1,22 @@
 [
   {
+    "version": "v0.0.3",
+    "date": "4 November 2026",
+    "isLatest": true,
+    "title": "Radar Akun Unik, Redesain UI, & Optimasi Ekosistem",
+    "highlights": [
+      "Peluncuran halaman Radar Akun (/radar) dengan filtering DISTINCT hingga 200 akun pantauan unik dan navigasi paginasi.",
+      "Redesain modern antarmuka utama (Home) dengan Omnibar responsif dan animasi transisi placeholder contoh profil.",
+      "Pembaruan arsitektur X Bot menggunakan twifork untuk mengatasi restriksi kriptografi transaksi Twitter/X.",
+      "Perombakan halaman Tentang Kami (About Bento Grid) dan ekspansi panduan pertanyaan umum (FAQ).",
+      "Peningkatan modal Changelog terpusat dengan efek latar blur via React Portal.",
+      "Penyempurnaan pengindeksan AI (GEO) dengan llms.txt & llms-full.txt, meta tag SEO dinamis, dan penanganan halaman 404 kustom."
+    ]
+  },
+  {
     "version": "v0.0.2",
     "date": "30 Juni 2026",
-    "isLatest": true,
+    "isLatest": false,
     "title": "Update Version 0.0.2",
     "highlights": [
       "Penyempurnaan tampilan leaderboard, kontras teks, dan efek loading skeleton yang lebih halus.",
