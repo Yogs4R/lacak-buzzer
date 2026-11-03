@@ -525,12 +525,13 @@ npm run dev
 
 ## Status X Bot & Contoh Respon
 
-> [!NOTE]
-> **Status X Bot Saat Ini: AKTIF / ENABLED**  
-> Menggunakan kombinasi `twscrape` dan `twikit` dengan injeksi *cookies* dari variabel environment JSON, Bot X ini dapat berjalan 100% gratis tanpa perlu berlangganan API X (Pay-Per-Use).
+> [!WARNING]
+> **Status X Bot (@lacakbuzzer): DALAM TAHAP EKSPERIMEN & PENYELIDIKAN (WIP)**  
+> Meskipun arsitektur dual-channel (`twifork` dan `twscrape`) telah diintegrasikan, deteksi mention otomatis di lingkungan cloud hosting saat ini masih mengalami kendala teknis akibat pembatasan IP data center oleh Twitter/X serta filter kualitas notifikasi internal.  
+> **Gunakan Web App Resmi:** Untuk analisis instan dan akurat yang 100% aktif dan stabil, silakan gunakan antarmuka web di [lacakbuzzer.web.id](https://lacakbuzzer.web.id).
 
 ### Format Respon X Bot
-Jika bot diaktifkan secara mandiri dengan kredensial *cookies* yang valid, format balasan otomatis di Twitter/X adalah sebagai berikut:
+Jika bot dijalankan secara mandiri dengan kredensial *cookies* yang valid, format balasan otomatis di Twitter/X adalah sebagai berikut:
 
 ```text
 Risiko: Tinggi | Skor: 74/100

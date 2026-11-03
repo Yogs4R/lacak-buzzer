@@ -23,19 +23,43 @@ graph TD
 
 ---
 
-## 1. Alternatif Bot Interaktif: Telegram & Discord
+## 1. Status X Bot (Twitter/X) & Alternatif Interaktif (Telegram & Discord)
 
-Langkah ini dirancang untuk menyediakan interaksi instan tanpa ketergantungan pada batasan ketat dan biaya komersial X API.
+Langkah ini dirancang untuk memetakan kendala bot Twitter/X saat ini serta menyediakan jalur interaksi instan tanpa ketergantungan pada batasan ketat dan biaya komersial X API.
 
-### A. Perbandingan Keuntungan
+### A. Status & Tantangan Teknis X Bot Saat Ini (`backend/bot/x_bot.py`)
 
-| Parameter | Twitter/X Bot (Nonaktif) | Telegram Bot (Rekomendasi) | Discord Bot |
+Saat ini integrasi bot otomatis untuk Twitter/X (`@lacakbuzzer`) masih berada dalam **tahap eksperimen dan belum stabil (Work In Progress)**. Meskipun arsitektur dual-channel telah dibangun dan dependensi telah dimigrasikan ke `twifork>=2.4.0`, sistem masih mengalami kendala pada tahap pembacaan (*read/detection*):
+
+#### 1. Kendala Mekanisme Read (Deteksi Mention)
+* **Kanal 1 (Notifikasi Akun via Twifork):**
+  - Error `ClientTransaction` sudah berhasil diperbaiki menggunakan `twifork`.
+  - **Hambatan:** Twitter Web memiliki fitur bawaan *Quality Filter* (Filter Kualitas) serta filter notifikasi dari akun yang tidak saling follow atau akun baru. Mention dari akun publik sering kali disembunyikan oleh sistem keamanan Twitter sehingga tidak muncul di feed notifikasi internal bot.
+* **Kanal 2 (Pencarian Publik via twscrape):**
+  - Endpoint GraphQL `SearchTimeline` Twitter menerapkan restriksi ketat terhadap IP data center/cloud (seperti IP Hugging Face Spaces).
+  - Akun scraping sering kali mengalami status 404 atau *temporary cooldown* (49/50 requests) saat melakukan pencarian kata kunci `@lacakbuzzer`.
+
+#### 2. Status Mekanisme Write (Pengiriman Balasan)
+* Karena tahap *read* belum menangkap mention baru di cloud, eksekusi pemanggilan analisis backend dan pengiriman balasan belum terpicu di lingkungan produksi.
+* **Rencana Pengujian Khusus:** Membuat script validasi mandiri (*write dry-run & live test*) untuk memastikan cookie sesi (`auth_token`, `ct0`) akun `@lacakbuzzer` masih valid untuk memposting tweet tanpa memicu verifikasi CAPTCHA atau penangguhan akun.
+
+#### 3. Rencana Tindak Lanjut untuk X Bot
+1. **Pengaturan Akun X:** Memastikan setelan *Settings > Notifications > Filters* pada akun `@lacakbuzzer` telah mematikan *"Quality filter"* dan *"Filter notifications from people you don't follow"*.
+2. **Pengujian Residential vs Cloud:** Menguji bot di lingkungan lokal (menggunakan IP koneksi internet rumah/residensial) untuk melihat apakah deteksi mention berjalan lancar dibanding IP cloud hosting.
+3. **Penyediaan CLI Test:** Menyediakan utilitas CLI lokal untuk mensimulasikan mention spesifik tanpa bergantung pada polling background.
+
+---
+
+### B. Perbandingan Keuntungan: X Bot vs Alternatif Platform
+
+| Parameter | Twitter/X Bot (Dalam Perbaikan) | Telegram Bot (Rekomendasi Utama) | Discord Bot |
 |---|---|---|---|
-| **Biaya API** | Berbayar (Pay-Per-Use) | **Gratis 100% Selamanya** | **Gratis 100% Selamanya** |
+| **Status Operasional** | **Eksperimental / Belum Stabil** | **Stabil & Terjamin** | **Stabil & Terjamin** |
+| **Biaya API** | Berbayar (Pay-Per-Use) / Rentan Blockir | **Gratis 100% Selamanya** | **Gratis 100% Selamanya** |
 | **Batas Karakter** | 280 karakter (sangat ketat) | **4.096 karakter** (sangat longgar) | **2.000 karakter** (longgar) |
-| **Kemudahan Pembuatan** | Sulit (Butuh review 24 jam & kartu kredit) | **Sangat Mudah** (Instan via @BotFather) | **Mudah** (via Discord Developer Portal) |
+| **Kemudahan Pembuatan** | Sulit (Kredensial cookies & session) | **Sangat Mudah** (Instan via @BotFather) | **Mudah** (via Discord Developer Portal) |
 | **Kemampuan Menampilkan Hasil** | Terbatas (Tanpa penjelasan AI) | **Lengkap** (Bisa menampilkan semua metrik + AI explanation) | **Lengkap** (Bisa format Rich Embed yang indah + AI explanation) |
-| **Model Polling/Webhook** | Polling via twscrape + write Tweepy | Long-polling ringan atau Webhook gratis | WebSocket gateway (`discord.py`) |
+| **Mekanisme Event** | Polling scraping rentan blokir | Webhook resmi / Long-polling resmi | WebSocket gateway resmi (`discord.py`) |
 
 ### B. Telegram Bot (Pilihan Utama)
 - **Library:** `pyTelegramBotAPI==4.15.0`
