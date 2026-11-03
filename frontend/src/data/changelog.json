@@ -3,40 +3,39 @@
     "version": "v0.0.3",
     "date": "4 November 2026",
     "isLatest": true,
-    "title": "Radar Akun Unik, Redesain UI, & Optimasi Ekosistem",
+    "title": "Radar Akun Tanpa Duplikasi & Tampilan Baru",
     "highlights": [
-      "Peluncuran halaman Radar Akun (/radar) dengan filtering DISTINCT hingga 200 akun pantauan unik dan navigasi paginasi.",
-      "Redesain modern antarmuka utama (Home) dengan Omnibar responsif dan animasi transisi placeholder contoh profil.",
-      "Pembaruan arsitektur X Bot menggunakan twifork untuk mengatasi restriksi kriptografi transaksi Twitter/X.",
-      "Perombakan halaman Tentang Kami (About Bento Grid) dan ekspansi panduan pertanyaan umum (FAQ).",
-      "Peningkatan modal Changelog terpusat dengan efek latar blur via React Portal.",
-      "Penyempurnaan pengindeksan AI (GEO) dengan llms.txt & llms-full.txt, meta tag SEO dinamis, dan penanganan halaman 404 kustom."
+      "Halaman Radar Akun kini menampilkan hingga 200 riwayat akun tanpa ada akun yang muncul berulang.",
+      "Tampilan beranda baru yang lebih bersih dan modern, dilengkapi contoh akun pencarian yang bergerak otomatis.",
+      "Pembaruan halaman Tentang Kami dan penambahan jawaban seputar keamanan serta metodologi pada menu Tanya Jawab (FAQ).",
+      "Jendela pop-up riwayat pembaruan kini tampil tepat di tengah layar dengan latar belakang redup agar lebih nyaman dibaca.",
+      "Pembaruan mesin bot X (@lacakbuzzer) agar lebih adaptif terhadap aturan baru Twitter/X.",
+      "Peningkatan kecepatan dan kemudahan menemukan informasi website melalui mesin pencari."
     ]
   },
   {
     "version": "v0.0.2",
     "date": "30 Juni 2026",
     "isLatest": false,
-    "title": "Update Version 0.0.2",
+    "title": "Peningkatan Kecepatan & Rincian Indikator",
     "highlights": [
-      "Penyempurnaan tampilan leaderboard, kontras teks, dan efek loading skeleton yang lebih halus.",
-      "Optimalisasi kecepatan respon server dan efisiensi pembacaan data Firestore melalui sistem caching.",
-      "Penambahan banner persetujuan cookie interaktif untuk transparansi privasi pengguna.",
-      "Modal rincian metrik interaktif untuk meninjau parameter skor secara lebih mendalam.",
-      "Penerapan batasan kuota analisis 5 permintaan per menit serta peningkatan keamanan sistem."
+      "Daftar akun kini tampil lebih tajam, mudah dibaca, dan memuat jauh lebih cepat.",
+      "Fitur rincian parameter untuk melihat penjelasan detail di balik skor perilaku akun.",
+      "Pemberitahuan persetujuan cookie untuk menjaga keterbukaan dan transparansi privasi pengunjung.",
+      "Penerapan batas analisis per menit demi menjaga server tetap stabil dan gratis digunakan bersama."
     ]
   },
   {
     "version": "v0.0.1",
     "date": "25 Juni 2026",
     "isLatest": false,
-    "title": "First Release Lacak Buzzer",
+    "title": "Peluncuran Perdana Lacak Buzzer",
     "highlights": [
-      "Peluncuran publik perdana platform Lacak Buzzer (MVP).",
-      "Mesin kalkulasi Indikator Risiko Amplifikasi Terkoordinasi berbasis skor 0–100.",
-      "Visualisasi diagram pola perilaku (Radar Chart) dan ekstraksi 7 parameter akun.",
-      "Integrasi bot resmi Twitter/X (@lacakbuzzer) melalui sistem mention otomatis.",
-      "Pemrosesan aman tanpa penyimpanan postingan mentah pengguna (stateless)."
+      "Peluncuran resmi platform Lacak Buzzer untuk publik secara gratis dan tanpa registrasi.",
+      "Pemeriksaan indikator pola perilaku akun X/Twitter menggunakan skala skor 0 hingga 100.",
+      "Penilaian objektif melalui 7 kebiasaan akun seperti kemiripan kata, tagar, dan jeda waktu posting.",
+      "Hadirnya bot pembantu di Twitter/X (@lacakbuzzer) yang dapat digunakan lewat mention.",
+      "Jaminan privasi: sistem tidak pernah menyimpan postingan tweet maupun data profil akun."
     ]
   }
 ]
