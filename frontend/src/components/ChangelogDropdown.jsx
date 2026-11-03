@@ -1,4 +1,5 @@
 import { useEffect, useRef } from 'react';
+import { createPortal } from 'react-dom';
 import changelogData from '../data/changelog.json';
 
 export default function ChangelogDropdown({ isOpen, onClose }) {
@@ -26,11 +27,11 @@ export default function ChangelogDropdown({ isOpen, onClose }) {
 
   if (!isOpen) return null;
 
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-3.5 sm:p-6 animate-fade-in">
-      {/* Blurred Dark Backdrop Overlay */}
+  const modalContent = (
+    <div className="fixed inset-0 z-[999] flex items-center justify-center p-3.5 sm:p-6 animate-fade-in font-main">
+      {/* Fullscreen Blurred Dark Backdrop Overlay */}
       <div
-        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity"
+        className="fixed inset-0 bg-black/80 backdrop-blur-md transition-opacity cursor-pointer"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -41,7 +42,7 @@ export default function ChangelogDropdown({ isOpen, onClose }) {
         role="dialog"
         aria-modal="true"
         aria-labelledby="changelog-title"
-        className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#121217] p-5 sm:p-6 shadow-[0_24px_64px_rgba(0,0,0,0.9)] z-10 text-left font-main flex flex-col max-h-[85vh]"
+        className="relative w-full max-w-lg rounded-2xl border border-white/10 bg-[#121217] p-5 sm:p-6 shadow-[0_24px_64px_rgba(0,0,0,0.95)] z-10 text-left flex flex-col max-h-[85vh]"
         onClick={(e) => e.stopPropagation()}
       >
         {/* Header with Title, Subtitle & Close Button */}
@@ -134,4 +135,6 @@ export default function ChangelogDropdown({ isOpen, onClose }) {
       </div>
     </div>
   );
+
+  return createPortal(modalContent, document.body);
 }
