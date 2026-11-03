@@ -1,6 +1,6 @@
 fastapi==0.138.2
 uvicorn==0.27.1
-twscrape==0.11.0
+twscrape>=0.20.1
 sentence-transformers>=6.0.1
 transformers>=5.5.0
 pydantic==2.13.4

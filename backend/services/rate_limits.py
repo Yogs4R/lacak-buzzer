@@ -41,8 +41,10 @@ def _save_limits(data: dict):
 
 def _clean_old_timestamps(timestamps: List[float]) -> List[float]:
     """Menghapus timestamp yang lebih lama dari 60 detik."""
+    if not isinstance(timestamps, list):
+        return []
     now = time.time()
-    return [t for t in timestamps if now - t < 60]
+    return [t for t in timestamps if isinstance(t, (int, float)) and now - t < 60]
 
 
 _MENTION_ID_PATTERN = re.compile(r'^[0-9]{1,25}$')

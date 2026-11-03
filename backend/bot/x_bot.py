@@ -288,37 +288,87 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
         try:
             print(f"\n[{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
 
-            # Bangun query: gunakan since_id jika sudah ada, atau since_time untuk run pertama
-            if last_seen_id:
-                query = f"@{bot_username} since_id:{last_seen_id}"
-            else:
-                # Run pertama: tangkap mention dalam 10x interval polling terakhir (min 10 menit)
-                since_ts = int(time.time()) - max(poll_interval * 10, 600)
-                query = f"@{bot_username} since_time:{since_ts}"
+            # Kumpulkan mention dari dua kanal independen:
+            # Kanal 1: Notifikasi langsung akun bot via Twikit (cepat & tanpa limit search)
+            # Kanal 2: Pencarian publik via twscrape (backup/fallback komprehensif)
+            incoming_mentions = []
 
-            # Ambil tweet terbaru yang menyebut bot (mode Latest, bukan Top/Popular)
-            raw_tweets = await gather(
-                scraper_api.search(query, limit=20, kv={"product": "Latest"})
+            # 1. Twikit Notifications
+            if twikit_client:
+                try:
+                    notifs = await twikit_client.get_notifications("Mentions", count=20)
+                    for n in notifs:
+                        if hasattr(n, "tweet") and n.tweet:
+                            t_id = str(n.tweet.id)
+                            t_text = getattr(n.tweet, "full_text", "") or getattr(n.tweet, "text", "")
+                            t_user = ""
+                            if hasattr(n, "from_user") and n.from_user:
+                                t_user = getattr(n.from_user, "screen_name", "")
+                            if not t_user and hasattr(n.tweet, "user") and n.tweet.user:
+                                t_user = getattr(n.tweet.user, "screen_name", "")
+
+                            if t_id and t_text:
+                                incoming_mentions.append({
+                                    "id": t_id,
+                                    "text": t_text,
+                                    "requester": t_user,
+                                    "source": "twikit_notifications"
+                                })
+                except Exception as e:
+                    print(f"   [Twikit Notifications] Catatan: {e}")
+
+            # 2. Twscrape Search (Solusi 1)
+            try:
+                if last_seen_id:
+                    query = f"@{bot_username} since_id:{last_seen_id}"
+                else:
+                    since_ts = int(time.time()) - max(poll_interval * 10, 600)
+                    query = f"@{bot_username} since_time:{since_ts}"
+
+                raw_tweets = await gather(
+                    scraper_api.search(query, limit=20, kv={"product": "Latest"})
+                )
+                for t in raw_tweets:
+                    incoming_mentions.append({
+                        "id": str(t.id),
+                        "text": getattr(t, "rawContent", "") or getattr(t, "text", ""),
+                        "requester": getattr(t.user, "username", ""),
+                        "source": "twscrape_search"
+                    })
+            except Exception as e:
+                print(f"   [twscrape Search] Catatan: {e}")
+
+            # Hilangkan duplikasi berdasarkan ID tweet mention
+            seen_ids = set()
+            unique_mentions = []
+            for m in incoming_mentions:
+                if m["id"] not in seen_ids:
+                    seen_ids.add(m["id"])
+                    unique_mentions.append(m)
+
+            # Urutkan secara kronologis (dari ID terkecil ke terbesar)
+            unique_mentions = sorted(
+                unique_mentions,
+                key=lambda m: int(m["id"]) if m["id"].isdigit() else 0
             )
 
-            # Urutkan dari terlama ke terbaru agar diproses secara kronologis
-            raw_tweets = sorted(raw_tweets, key=lambda t: int(t.id))
+            # Perbarui last_seen_id ke ID tertinggi
+            if unique_mentions:
+                valid_ids = [int(m["id"]) for m in unique_mentions if m["id"].isdigit()]
+                if valid_ids:
+                    candidate_id = str(max(valid_ids))
+                    if last_seen_id is None or int(candidate_id) > int(last_seen_id):
+                        last_seen_id = candidate_id
 
-            # Perbarui last_seen_id ke ID tertinggi di batch ini
-            if raw_tweets:
-                candidate_id = str(max(int(t.id) for t in raw_tweets))
-                if last_seen_id is None or int(candidate_id) > int(last_seen_id):
-                    last_seen_id = candidate_id
+            print(f"   Ditemukan {len(unique_mentions)} mention baru untuk @{bot_username}.")
 
-            print(f"   Ditemukan {len(raw_tweets)} mention baru untuk @{bot_username}.")
-
-            for t in raw_tweets:
-                mention_id = str(t.id)
+            for m in unique_mentions:
+                mention_id = m["id"]
                 if mention_id in replied_mentions:
                     continue
-                
-                text = t.rawContent
-                requester = t.user.username
+
+                text = m["text"]
+                requester = m["requester"]
 
                 # Proses mention teks untuk melihat apakah ada target analisis valid
                 reply_text = await process_mention_text(

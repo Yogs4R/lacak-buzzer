@@ -1,8 +1,9 @@
 """
-Test unit untuk memverifikasi bahwa scraper memanggil api.user_tweets_and_replies
-dan tweet balasan (replies) diekstraksi serta dinilai dengan tepat.
+Test unit untuk memverifikasi bahwa scraper memanggil api.user_tweets_and_replies,
+memiliki fast-fail timeout, dan fallback ke user_tweets standar jika replies endpoint bermasalah.
 """
 import asyncio
+import pytest
 from unittest.mock import patch, MagicMock, AsyncMock
 from services.scraper import scrape_tweets
 from services.scoring import calculate_score, normalize_metrics, get_risk_band
@@ -90,3 +91,61 @@ def test_scraper_extracts_replies_and_scores_correctly():
     assert 0 <= score <= 100
     assert norm["interaction_behavior"] > 0
     assert risk in ["Rendah", "Sedang", "Tinggi", "Ekstrem"]
+
+
+def test_scraper_fast_fail_timeout():
+    """Menguji bahwa scraper langsung melempar TimeoutError jika operasi melebihi batas waktu (tidak stuck 15 menit)."""
+    async def run_timeout_test():
+        with patch("services.scraper.API") as mock_api_class:
+            mock_api_instance = MagicMock()
+            mock_api_class.return_value = mock_api_instance
+
+            # Simulasikan proses user_by_login yang tertidur lama (seperti twscrape sleep saat antrean habis)
+            async def hanging_call(*args, **kwargs):
+                await asyncio.sleep(2.0)
+                return None
+
+            mock_api_instance.user_by_login = hanging_call
+
+            with pytest.raises(asyncio.TimeoutError):
+                await scrape_tweets("test_user", limit=100, timeout=0.1)
+
+    asyncio.run(run_timeout_test())
+
+
+def test_scraper_fallback_to_user_tweets():
+    """Menguji bahwa scraper fallback ke user_tweets biasa jika endpoint user_tweets_and_replies mengalami error."""
+    mock_user = MagicMock()
+    mock_user.id = 77777
+    mock_user.username = "fallback_user"
+    mock_user.rawDescription = "Akun fallback test"
+    mock_user.created = "2024-01-01T00:00:00Z"
+    mock_user.protected = False
+
+    mock_tweets = [DummyTweet(100 + i, f"Tweet regular {i}") for i in range(15)]
+
+    async def run_fallback_test():
+        with patch("services.scraper.API") as mock_api_class:
+            mock_api_instance = MagicMock()
+            mock_api_class.return_value = mock_api_instance
+            mock_api_instance.user_by_login = AsyncMock(return_value=mock_user)
+
+            # Simulasikan user_tweets_and_replies melempar error (seperti 404 dari Twitter)
+            def broken_replies_gen(*args, **kwargs):
+                raise RuntimeError("GraphQL 404 endpoint not found")
+
+            async def regular_tweets_gen():
+                for t in mock_tweets:
+                    yield t
+
+            mock_api_instance.user_tweets_and_replies = broken_replies_gen
+            mock_api_instance.user_tweets = MagicMock(return_value=regular_tweets_gen())
+
+            result = await scrape_tweets("fallback_user", limit=100)
+
+            # Pastikan user_tweets dipanggil sebagai fallback
+            assert mock_api_instance.user_tweets.called
+            assert len(result["tweets"]) == 15
+            assert all(t["reply_flag"] is False for t in result["tweets"])
+
+    asyncio.run(run_fallback_test())

@@ -2,6 +2,7 @@
 Endpoint API FastAPI untuk melayani permintaan analisis dari website dan bot X.
 """
 import re
+import asyncio
 from fastapi import APIRouter, Request, status
 from fastapi.responses import JSONResponse
 from urllib.parse import urlparse
@@ -174,6 +175,15 @@ async def analyze_account(req: AnalysisRequest, request: Request):
                     "message": "Masalah koneksi ke Twitter. Coba beberapa saat lagi."
                 }
             )
+    except (asyncio.TimeoutError, TimeoutError) as e:
+        log_step(f"Scraper timeout: {e}")
+        return JSONResponse(
+            status_code=status.HTTP_400_BAD_REQUEST,
+            content={
+                "error": "scraper_rate_limit",
+                "message": "Pengambilan data Twitter melebihi batas waktu (timeout). Antrean scraper sedang padat atau cooldown, silakan coba beberapa saat lagi."
+            }
+        )
     except Exception as e:
         import traceback
         log_step(f"Exception saat scraping: {e}")
