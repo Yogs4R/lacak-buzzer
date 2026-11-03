@@ -3,6 +3,7 @@ import { BrowserRouter, Routes, Route, useLocation } from 'react-router-dom';
 import Header from './components/Header';
 import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
+import MaintenanceOverlay from './components/MaintenanceOverlay';
 import Home from './pages/Home';
 import About from './pages/About';
 import FAQ from './pages/FAQ';
@@ -21,9 +22,12 @@ function ScrollToTop() {
 }
 
 export default function App() {
+  const isMaintenance = true;
+
   return (
     <BrowserRouter>
       <ScrollToTop />
+      {isMaintenance && <MaintenanceOverlay />}
       <div style={{ minHeight: '100dvh', display: 'flex', flexDirection: 'column' }}>
         <Header />
         <main style={{ flex: 1 }}>
