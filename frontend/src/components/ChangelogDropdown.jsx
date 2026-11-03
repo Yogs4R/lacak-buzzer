@@ -48,13 +48,6 @@ export default function ChangelogDropdown({ isOpen, onClose }) {
         {/* Header with Title, Subtitle & Close Button */}
         <div className="flex items-center justify-between border-b border-white/10 pb-3.5 mb-4 shrink-0">
           <div className="flex items-center gap-2.5">
-            <div className="w-8 h-8 rounded-xl bg-[#f97316]/10 border border-[#f97316]/20 flex items-center justify-center text-[#f97316] shrink-0">
-              <svg className="w-4 h-4" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={2}>
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 12a9 9 0 1 0 9-9 9.75 9.75 0 0 0-6.74 2.74L3 8" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M3 3v5h5" />
-                <path strokeLinecap="round" strokeLinejoin="round" d="M12 7v5l3 2" />
-              </svg>
-            </div>
             <div>
               <h2 id="changelog-title" className="text-sm sm:text-base font-bold text-white tracking-tight">
                 Riwayat Pembaruan
