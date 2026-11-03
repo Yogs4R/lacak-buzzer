@@ -2,11 +2,11 @@ import { useState, useEffect } from 'react';
 
 const PLACEHOLDERS = [
   'Masukkan username atau link profil X...',
-  '@kemkomdigi',
+  'kemkomdigi',
   'https://x.com/prabowo',
-  '@detikcom',
-  '@aniesbaswedan',
-  '@target_akun',
+  'detikcom',
+  'aniesbaswedan',
+  'target_akun',
 ];
 
 const parseXUrl = (urlStr) => {

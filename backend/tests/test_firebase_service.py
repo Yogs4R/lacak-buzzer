@@ -143,6 +143,38 @@ def test_get_recent_scans():
         assert res[0]["username"] == "user1"
 
 
+def test_get_recent_scans_distinct():
+    """get_recent_scans dengan distinct=True harus menyaring username duplikat."""
+    firebase_service.clear_firebase_cache()
+    with patch("services.firebase_service.get_db", return_value=mock_db):
+        mock_col = MagicMock()
+        mock_query_1 = MagicMock()
+        mock_query_2 = MagicMock()
+
+        mock_db.collection.return_value = mock_col
+        mock_col.order_by.return_value = mock_query_1
+        mock_query_1.limit.return_value = mock_query_2
+
+        doc1 = MagicMock()
+        doc1.to_dict.return_value = {"username": "prabowo", "score": 17, "risk_label": "Rendah", "created_at": None}
+        doc2 = MagicMock()
+        doc2.to_dict.return_value = {"username": "PRABOWO", "score": 17, "risk_label": "Rendah", "created_at": None}
+        doc3 = MagicMock()
+        doc3.to_dict.return_value = {"username": "other_user", "score": 50, "risk_label": "Sedang", "created_at": None}
+
+        mock_query_2.stream.return_value = [doc1, doc2, doc3]
+
+        # Non-distinct: mengembalikan semua dokumen
+        res_all = firebase_service.get_recent_scans(5, distinct=False)
+        assert len(res_all) == 3
+
+        # Distinct: menyaring PRABOWO duplikat
+        res_distinct = firebase_service.get_recent_scans(5, distinct=True)
+        assert len(res_distinct) == 2
+        assert res_distinct[0]["username"] == "prabowo"
+        assert res_distinct[1]["username"] == "other_user"
+
+
 def test_get_safest_accounts():
     """get_safest_accounts harus mengambil data dengan score ascending."""
     with patch("services.firebase_service.get_db", return_value=mock_db):

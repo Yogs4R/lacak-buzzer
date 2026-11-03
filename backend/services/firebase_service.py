@@ -182,28 +182,50 @@ def get_global_stats() -> dict:
         return default_stats
 
 
-def get_recent_scans(limit: int = 5) -> list:
+def _filter_distinct(scans: list, limit: int, distinct: bool) -> list:
+    """Menyaring daftar pemindaian. Jika distinct=True, hanya kembalikan username unik pertama."""
+    if not distinct:
+        return scans[:limit]
+
+    seen = set()
+    unique = []
+    for s in scans:
+        username = s.get("username", "")
+        if not username:
+            continue
+        key = username.lower()
+        if key not in seen:
+            seen.add(key)
+            unique.append(s)
+            if len(unique) >= limit:
+                break
+    return unique
+
+
+def get_recent_scans(limit: int = 5, distinct: bool = False) -> list:
     """Mengambil riwayat pemindaian akun terbaru."""
     global _cache
     now = time.time()
-    if limit in _cache["recent_scans"]:
-        cache_entry = _cache["recent_scans"][limit]
+    cache_key = (limit, distinct)
+    if cache_key in _cache["recent_scans"]:
+        cache_entry = _cache["recent_scans"][cache_key]
         if now < cache_entry["expires_at"]:
-            print(f"⚡ Returning cached recent scans (limit={limit}).")
+            print(f"⚡ Returning cached recent scans (limit={limit}, distinct={distinct}).")
             return cache_entry["data"]
 
     db = get_db()
     if db is None:
         return []
     try:
-        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
+        # Ambil lebih banyak dokumen jika distinct agar mencukupi setelah disaring
+        fetch_limit = max(limit * 3, 300) if distinct else limit * 4
         docs = db.collection("scan_history")\
             .order_by("created_at", direction=firestore.Query.DESCENDING)\
-            .limit(limit * 4)\
+            .limit(fetch_limit)\
             .stream()
         scans = _format_scan_list(docs)
-        res = scans[:limit]
-        _cache["recent_scans"][limit] = {
+        res = _filter_distinct(scans, limit, distinct)
+        _cache["recent_scans"][cache_key] = {
             "data": res,
             "expires_at": now + CACHE_TTL
         }
@@ -213,28 +235,29 @@ def get_recent_scans(limit: int = 5) -> list:
         return []
 
 
-def get_safest_accounts(limit: int = 5) -> list:
+def get_safest_accounts(limit: int = 5, distinct: bool = False) -> list:
     """Mengambil riwayat pemindaian akun dengan skor terendah (teraman)."""
     global _cache
     now = time.time()
-    if limit in _cache["safest_accounts"]:
-        cache_entry = _cache["safest_accounts"][limit]
+    cache_key = (limit, distinct)
+    if cache_key in _cache["safest_accounts"]:
+        cache_entry = _cache["safest_accounts"][cache_key]
         if now < cache_entry["expires_at"]:
-            print(f"⚡ Returning cached safest accounts (limit={limit}).")
+            print(f"⚡ Returning cached safest accounts (limit={limit}, distinct={distinct}).")
             return cache_entry["data"]
 
     db = get_db()
     if db is None:
         return []
     try:
-        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
+        fetch_limit = max(limit * 3, 300) if distinct else limit * 4
         docs = db.collection("scan_history")\
             .order_by("score", direction=firestore.Query.ASCENDING)\
-            .limit(limit * 4)\
+            .limit(fetch_limit)\
             .stream()
         scans = _format_scan_list(docs)
-        res = scans[:limit]
-        _cache["safest_accounts"][limit] = {
+        res = _filter_distinct(scans, limit, distinct)
+        _cache["safest_accounts"][cache_key] = {
             "data": res,
             "expires_at": now + CACHE_TTL
         }
@@ -244,28 +267,29 @@ def get_safest_accounts(limit: int = 5) -> list:
         return []
 
 
-def get_riskiest_accounts(limit: int = 5) -> list:
+def get_riskiest_accounts(limit: int = 5, distinct: bool = False) -> list:
     """Mengambil riwayat pemindaian akun dengan skor tertinggi (paling indikatif)."""
     global _cache
     now = time.time()
-    if limit in _cache["riskiest_accounts"]:
-        cache_entry = _cache["riskiest_accounts"][limit]
+    cache_key = (limit, distinct)
+    if cache_key in _cache["riskiest_accounts"]:
+        cache_entry = _cache["riskiest_accounts"][cache_key]
         if now < cache_entry["expires_at"]:
-            print(f"⚡ Returning cached riskiest accounts (limit={limit}).")
+            print(f"⚡ Returning cached riskiest accounts (limit={limit}, distinct={distinct}).")
             return cache_entry["data"]
 
     db = get_db()
     if db is None:
         return []
     try:
-        # Ambil lebih banyak dokumen untuk menyaring akun dummy 'target_user'
+        fetch_limit = max(limit * 3, 300) if distinct else limit * 4
         docs = db.collection("scan_history")\
             .order_by("score", direction=firestore.Query.DESCENDING)\
-            .limit(limit * 4)\
+            .limit(fetch_limit)\
             .stream()
         scans = _format_scan_list(docs)
-        res = scans[:limit]
-        _cache["riskiest_accounts"][limit] = {
+        res = _filter_distinct(scans, limit, distinct)
+        _cache["riskiest_accounts"][cache_key] = {
             "data": res,
             "expires_at": now + CACHE_TTL
         }

@@ -20,12 +20,13 @@ def get_stats():
 
 
 @router.get("/leaderboard")
-def get_leaderboard():
+def get_leaderboard(limit: int = 5, distinct: bool = False):
     """Mengembalikan data leaderboard terbagi menjadi 3 kategori: terbaru, teraman, dan paling berisiko."""
+    clamped_limit = max(1, min(limit, 300))
     return {
-        "recent_scans": get_recent_scans(5),
-        "safest_accounts": get_safest_accounts(5),
-        "riskiest_accounts": get_riskiest_accounts(5)
+        "recent_scans": get_recent_scans(limit=clamped_limit, distinct=distinct),
+        "safest_accounts": get_safest_accounts(limit=clamped_limit, distinct=distinct),
+        "riskiest_accounts": get_riskiest_accounts(limit=clamped_limit, distinct=distinct)
     }
 
 

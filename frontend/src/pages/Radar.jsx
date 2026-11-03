@@ -53,6 +53,7 @@ export default function Radar() {
   const [reportsCache, setReportsCache] = useState({});
   const [loadingReport, setLoadingReport] = useState(false);
   const [searchFilter, setSearchFilter] = useState('');
+  const [visibleCount, setVisibleCount] = useState(25);
 
   useSEO({
     title: 'Lacak Buzzer | Radar Akun',
@@ -71,26 +72,26 @@ export default function Radar() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      // Cek cache session
-      const cached = sessionStorage.getItem('leaderboardData');
+      // Cek cache session khusus radar
+      const cached = sessionStorage.getItem('radarLeaderboardData');
       if (cached) {
         try {
           setLeaderboardData(JSON.parse(cached));
           setLoading(false);
         } catch (e) {
-          sessionStorage.removeItem('leaderboardData');
+          sessionStorage.removeItem('radarLeaderboardData');
         }
       }
 
       try {
-        const res = await fetch(getApiUrl('/api/leaderboard'));
+        const res = await fetch(getApiUrl('/api/leaderboard?limit=200&distinct=true'));
         if (res.ok) {
           const data = await res.json();
           setLeaderboardData(data);
-          sessionStorage.setItem('leaderboardData', JSON.stringify(data));
+          sessionStorage.setItem('radarLeaderboardData', JSON.stringify(data));
         }
       } catch (err) {
-        console.error('Gagal memuat leaderboard', err);
+        console.error('Gagal memuat data radar', err);
       } finally {
         setLoading(false);
       }
@@ -98,6 +99,12 @@ export default function Radar() {
 
     fetchLeaderboard();
   }, []);
+
+  // Reset pagination & expanded card ketika tab atau search berubah
+  useEffect(() => {
+    setVisibleCount(25);
+    setExpandedUser(null);
+  }, [activeTab, searchFilter]);
 
   const handleToggleRow = async (username) => {
     if (expandedUser === username) {
@@ -138,6 +145,7 @@ export default function Radar() {
   };
 
   const activeList = getActiveList();
+  const displayedList = activeList.slice(0, visibleCount);
 
   return (
     <div className="w-full max-w-4xl mx-auto px-4 pt-24 sm:pt-32 pb-16 font-main animate-fade-in-up">
@@ -155,7 +163,7 @@ export default function Radar() {
       </div>
 
       {/* Control Bar: Tabs & Search Filter */}
-      <div className="card p-3 sm:p-4 rounded-2xl border border-white/5 bg-[#121215]/60 mb-6 flex flex-col sm:flex-row items-center justify-between gap-3">
+      <div className="card p-3 sm:p-4 rounded-2xl border border-white/5 bg-[#121215]/60 mb-4 flex flex-col sm:flex-row items-center justify-between gap-3">
         {/* Filter Tabs */}
         <div className="flex items-center gap-1.5 p-1 rounded-xl bg-black/40 border border-white/5 w-full sm:w-auto">
           {[
@@ -200,6 +208,22 @@ export default function Radar() {
         </div>
       </div>
 
+      {/* List Metadata Bar: Unique Account Count Counter */}
+      {!loading && activeList.length > 0 && (
+        <div className="flex items-center justify-between text-xs text-zinc-400 mb-3 px-1">
+          <span className="flex items-center gap-1.5">
+            <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
+            <span>
+              Menampilkan <strong className="text-white font-mono">{activeList.length}</strong> akun unik
+              {searchFilter && ` (hasil filter "${searchFilter}")`}
+            </span>
+          </span>
+          <span className="text-[11px] text-zinc-500 hidden sm:inline font-mono">
+            Maks. 200 akun • Terfilter unik
+          </span>
+        </div>
+      )}
+
       {/* Radar List Container */}
       <div className="card rounded-2xl border border-white/5 bg-[#121215]/60 overflow-hidden shadow-xl mb-12">
         {loading ? (
@@ -213,7 +237,7 @@ export default function Radar() {
           </div>
         ) : (
           <div className="divide-y divide-white/5">
-            {activeList.map((item, idx) => {
+            {displayedList.map((item, idx) => {
               const badge = RISK_BADGES[item.risk_label] || RISK_BADGES.Rendah;
               const isExpanded = expandedUser === item.username;
               const report = reportsCache[item.username];
@@ -364,6 +388,27 @@ export default function Radar() {
                 </div>
               );
             })}
+
+            {/* Pagination / Load More Button */}
+            {visibleCount < activeList.length && (
+              <div className="p-4 sm:p-5 text-center bg-black/20 border-t border-white/5">
+                <button
+                  type="button"
+                  onClick={() => setVisibleCount((prev) => Math.min(prev + 25, activeList.length))}
+                  className="px-5 py-2 text-xs font-semibold rounded-xl bg-white/5 hover:bg-white/10 text-white border border-white/10 hover:border-[#f97316]/50 transition-all duration-200 cursor-pointer inline-flex items-center gap-2"
+                >
+                  <span>Tampilkan Lebih Banyak</span>
+                  <span className="font-mono text-[11px] text-zinc-400">
+                    ({activeList.length - visibleCount} akun tersisa)
+                  </span>
+                </button>
+              </div>
+            )}
+            {visibleCount >= activeList.length && activeList.length > 25 && (
+              <div className="p-3 text-center text-[11px] text-zinc-500 border-t border-white/5 font-mono">
+                Semua {activeList.length} akun unik telah ditampilkan
+              </div>
+            )}
           </div>
         )}
       </div>
