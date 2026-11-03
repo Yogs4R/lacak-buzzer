@@ -72,14 +72,21 @@ export default function Radar() {
 
   useEffect(() => {
     const fetchLeaderboard = async () => {
-      // Cek cache session khusus radar
-      const cached = sessionStorage.getItem('radarLeaderboardData');
+      // Cek cache session khusus radar (v2: mendukung distinct hingga 200 akun)
+      sessionStorage.removeItem('radarLeaderboardData'); // Bersihkan cache v1 lama jika ada
+      const cached = sessionStorage.getItem('radarLeaderboardData_v2');
       if (cached) {
         try {
-          setLeaderboardData(JSON.parse(cached));
-          setLoading(false);
+          const parsed = JSON.parse(cached);
+          // Hanya gunakan cache jika berisi data baru (> 5 akun)
+          if (parsed && parsed.recent_scans && parsed.recent_scans.length > 5) {
+            setLeaderboardData(parsed);
+            setLoading(false);
+          } else {
+            sessionStorage.removeItem('radarLeaderboardData_v2');
+          }
         } catch (e) {
-          sessionStorage.removeItem('radarLeaderboardData');
+          sessionStorage.removeItem('radarLeaderboardData_v2');
         }
       }
 
@@ -88,7 +95,7 @@ export default function Radar() {
         if (res.ok) {
           const data = await res.json();
           setLeaderboardData(data);
-          sessionStorage.setItem('radarLeaderboardData', JSON.stringify(data));
+          sessionStorage.setItem('radarLeaderboardData_v2', JSON.stringify(data));
         }
       } catch (err) {
         console.error('Gagal memuat data radar', err);
