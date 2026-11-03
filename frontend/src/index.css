@@ -502,3 +502,35 @@ body {
   width: 120px;
   object-fit: contain;
 }
+
+
+/* ─── SearchBar Animated Placeholder Keyframes ───────────────── */
+@keyframes placeholderSlideIn {
+  0% {
+    transform: translateY(-9px);
+    opacity: 0;
+  }
+  100% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+}
+
+@keyframes placeholderSlideOut {
+  0% {
+    transform: translateY(0);
+    opacity: 1;
+  }
+  100% {
+    transform: translateY(9px);
+    opacity: 0;
+  }
+}
+
+.placeholder-slide-in {
+  animation: placeholderSlideIn 0.22s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+
+.placeholder-slide-out {
+  animation: placeholderSlideOut 0.18s cubic-bezier(0.4, 0, 1, 1) forwards;
+}

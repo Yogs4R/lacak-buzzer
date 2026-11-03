@@ -1,0 +1,28 @@
+[
+  {
+    "version": "v0.0.2",
+    "date": "30 Juni 2026",
+    "isLatest": true,
+    "title": "Update Version 0.0.2",
+    "highlights": [
+      "Penyempurnaan tampilan leaderboard, kontras teks, dan efek loading skeleton yang lebih halus.",
+      "Optimalisasi kecepatan respon server dan efisiensi pembacaan data Firestore melalui sistem caching.",
+      "Penambahan banner persetujuan cookie interaktif untuk transparansi privasi pengguna.",
+      "Modal rincian metrik interaktif untuk meninjau parameter skor secara lebih mendalam.",
+      "Penerapan batasan kuota analisis 5 permintaan per menit serta peningkatan keamanan sistem."
+    ]
+  },
+  {
+    "version": "v0.0.1",
+    "date": "25 Juni 2026",
+    "isLatest": false,
+    "title": "First Release Lacak Buzzer",
+    "highlights": [
+      "Peluncuran publik perdana platform Lacak Buzzer (MVP).",
+      "Mesin kalkulasi Indikator Risiko Amplifikasi Terkoordinasi berbasis skor 0–100.",
+      "Visualisasi diagram pola perilaku (Radar Chart) dan ekstraksi 7 parameter akun.",
+      "Integrasi bot resmi Twitter/X (@lacakbuzzer) melalui sistem mention otomatis.",
+      "Pemrosesan aman tanpa penyimpanan postingan mentah pengguna (stateless)."
+    ]
+  }
+]

@@ -1,4 +1,13 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
+
+const PLACEHOLDERS = [
+  'Masukkan username atau link profil X...',
+  '@kemkomdigi',
+  'https://x.com/prabowo',
+  '@detikcom',
+  '@aniesbaswedan',
+  '@target_akun',
+];
 
 const parseXUrl = (urlStr) => {
   try {
@@ -37,6 +46,24 @@ const parseXUrl = (urlStr) => {
 export default function SearchBar({ onSubmit, loading = false }) {
   const [value, setValue] = useState('');
   const [error, setError] = useState('');
+  const [placeholderIndex, setPlaceholderIndex] = useState(0);
+  const [isExiting, setIsExiting] = useState(false);
+
+  useEffect(() => {
+    if (value || loading) return;
+
+    const interval = setInterval(() => {
+      setIsExiting(true);
+      const exitTimer = setTimeout(() => {
+        setPlaceholderIndex((prev) => (prev + 1) % PLACEHOLDERS.length);
+        setIsExiting(false);
+      }, 190);
+
+      return () => clearTimeout(exitTimer);
+    }, 2800);
+
+    return () => clearInterval(interval);
+  }, [value, loading]);
 
   const normalizeInput = (raw) => {
     const input = raw.trim();
@@ -92,7 +119,7 @@ export default function SearchBar({ onSubmit, loading = false }) {
           URL profil atau username X/Twitter
         </label>
         
-        {/* Sleek Capsule Container (LeakCheck / HaveIBeenPwned Style) */}
+        {/* Sleek Capsule Container */}
         <div className="relative flex items-center w-full rounded-full border border-white/15 bg-[#141418]/90 p-1.5 sm:p-2 shadow-[0_12px_40px_rgba(0,0,0,0.6)] backdrop-blur-md focus-within:border-[#f97316] focus-within:ring-2 focus-within:ring-[#f97316]/30 transition-all duration-300">
           {/* Left Search Icon */}
           <div className="pl-3 sm:pl-4 pr-1 text-zinc-400 select-none flex items-center shrink-0">
@@ -111,27 +138,40 @@ export default function SearchBar({ onSubmit, loading = false }) {
             </svg>
           </div>
 
-          {/* Text Input */}
-          <input
-            id="x-profile-input"
-            type="text"
-            value={value}
-            onChange={(event) => {
-              setValue(event.target.value);
-              if (error) setError('');
-            }}
-            placeholder="Username atau link profil X..."
-            disabled={loading}
-            autoComplete="off"
-            spellCheck="false"
-            className="w-full bg-transparent px-2.5 sm:px-3 py-2 sm:py-3 text-[13px] sm:text-base text-white placeholder:text-zinc-500 focus:outline-none font-sans"
-          />
+          {/* Input & Animated Placeholder Wrapper */}
+          <div className="relative w-full flex items-center overflow-hidden">
+            <input
+              id="x-profile-input"
+              type="text"
+              value={value}
+              onChange={(event) => {
+                setValue(event.target.value);
+                if (error) setError('');
+              }}
+              disabled={loading}
+              autoComplete="off"
+              spellCheck="false"
+              className="w-full bg-transparent px-2.5 sm:px-3 py-2 sm:py-3 text-[13px] sm:text-base text-white focus:outline-none font-sans relative z-10"
+            />
+
+            {/* Animated Placeholder Text */}
+            {!value && (
+              <div className="absolute inset-0 px-2.5 sm:px-3 flex items-center pointer-events-none select-none text-zinc-500 text-[13px] sm:text-base font-sans overflow-hidden">
+                <span
+                  key={placeholderIndex}
+                  className={`truncate ${isExiting ? 'placeholder-slide-out' : 'placeholder-slide-in'}`}
+                >
+                  {PLACEHOLDERS[placeholderIndex]}
+                </span>
+              </div>
+            )}
+          </div>
 
           {/* Integrated Action Button */}
           <button
             type="submit"
             disabled={loading}
-            className="rounded-full bg-gradient-to-r from-[#e03a1e] to-[#f97316] text-white font-semibold px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm hover:opacity-95 transition-opacity disabled:opacity-50 shrink-0 flex items-center gap-1.5 shadow-md cursor-pointer whitespace-nowrap"
+            className="rounded-full bg-gradient-to-r from-[#e03a1e] to-[#f97316] text-white font-semibold px-4 sm:px-7 py-2 sm:py-2.5 text-xs sm:text-sm hover:opacity-95 transition-opacity disabled:opacity-50 shrink-0 flex items-center gap-1.5 shadow-md cursor-pointer whitespace-nowrap z-20"
           >
             {loading ? (
               <>

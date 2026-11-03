@@ -5,6 +5,7 @@ import Footer from './components/Footer';
 import CookieBanner from './components/CookieBanner';
 import MaintenanceOverlay from './components/MaintenanceOverlay';
 import Home from './pages/Home';
+import Radar from './pages/Radar';
 import About from './pages/About';
 import FAQ from './pages/FAQ';
 import Privacy from './pages/Privacy';
@@ -22,7 +23,7 @@ function ScrollToTop() {
 }
 
 export default function App() {
-  const isMaintenance = true;
+  const isMaintenance = false;
 
   return (
     <BrowserRouter>
@@ -33,6 +34,7 @@ export default function App() {
         <main style={{ flex: 1 }}>
           <Routes>
             <Route path="/" element={<Home />} />
+            <Route path="/radar" element={<Radar />} />
             <Route path="/about" element={<About />} />
             <Route path="/faq" element={<FAQ />} />
             <Route path="/privacy" element={<Privacy />} />
