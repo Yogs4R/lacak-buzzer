@@ -289,3 +289,231 @@ def test_dry_run_hides_unsafe_backend_error_details():
     assert "Traceback" not in output
     assert ".env" not in output
     assert "token" not in output
+
+
+# ---------------------------------------------------------------------------
+# Polling mention: dedupe, state persisten, kanal gagal, filter umur
+# ---------------------------------------------------------------------------
+
+import time as _time
+from types import SimpleNamespace
+
+from bot.x_bot import (
+    HandledMentions,
+    collect_mentions,
+    fetch_notification_mentions,
+    fetch_search_mentions,
+    select_new_mentions,
+    snowflake_to_unix,
+)
+
+_EPOCH_MS = 1288834974657
+
+
+def make_id(unix_seconds: float, seq: int = 0) -> str:
+    return str(((int(unix_seconds * 1000) - _EPOCH_MS) << 22) + seq)
+
+
+def make_mention(m_id, text="@LacakBuzzer cek @detikcom", requester="dandy63609", in_reply_to=""):
+    return {"id": m_id, "text": text, "requester": requester, "in_reply_to": in_reply_to, "source": "test"}
+
+
+def test_snowflake_roundtrip():
+    now = 1_790_000_000.0
+    assert abs(snowflake_to_unix(make_id(now)) - now) < 0.01
+    assert snowflake_to_unix("bukan-angka") is None
+
+
+def test_duplicate_mention_error_is_not_posted_publicly():
+    client = FakeClient(FakeResponse({"error": "rate_limit_exceeded", "message": "Duplicate mention"}))
+
+    reply = run_async(
+        process_mention_text(
+            "@LacakBuzzer cek @detikcom",
+            "LacakBuzzer",
+            "dandy63609",
+            "123",
+            "https://api.example.test",
+            client=client,
+        )
+    )
+
+    assert reply is None
+
+
+def test_user_facing_rate_limit_error_is_still_posted():
+    message = "Akun ini sudah dianalisis baru-baru ini. Coba lagi beberapa saat lagi."
+    client = FakeClient(FakeResponse({"error": "rate_limit_exceeded", "message": message}))
+
+    reply = run_async(
+        process_mention_text(
+            "@LacakBuzzer cek @detikcom",
+            "LacakBuzzer",
+            "dandy63609",
+            "123",
+            "https://api.example.test",
+            client=client,
+        )
+    )
+
+    assert reply == message
+
+
+def test_select_new_mentions_filters_and_sorts():
+    now = 1_790_000_000.0
+    newer = make_id(now - 10)
+    older = make_id(now - 60)
+    stale = make_id(now - 3 * 3600)
+    handled_id = make_id(now - 30)
+
+    mentions = [
+        make_mention(newer),
+        make_mention(newer),  # sama dari kanal lain
+        make_mention(older),
+        make_mention(stale),  # terlalu lama (mis. setelah restart)
+        make_mention(handled_id),
+        make_mention(make_id(now - 5, 1), requester="LacakBuzzer"),  # tweet bot sendiri
+        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer"),  # balasan di thread bot
+        make_mention("abc"),
+        make_mention(make_id(now - 5, 3), text=""),
+    ]
+
+    selected = select_new_mentions(mentions, "LacakBuzzer", {handled_id}, now=now, max_age_seconds=1800)
+
+    assert [m["id"] for m in selected] == [older, newer]
+
+
+def test_handled_mentions_persist_across_restart(tmp_path):
+    path = str(tmp_path / "x_bot_state.json")
+    handled = HandledMentions(path=path, limit=3)
+    for m_id in ["1", "2", "3", "4"]:
+        handled.add(m_id)
+
+    reloaded = HandledMentions(path=path, limit=3)
+    assert "1" not in reloaded
+    assert all(m_id in reloaded for m_id in ["2", "3", "4"])
+
+
+def test_handled_mentions_survive_corrupt_file(tmp_path):
+    path = tmp_path / "x_bot_state.json"
+    path.write_text("{rusak", encoding="utf-8")
+
+    handled = HandledMentions(path=str(path))
+    handled.add("10")
+
+    assert "10" in HandledMentions(path=str(path))
+
+
+class FakeTwikitClient:
+    def __init__(self, notifications=None, error=None):
+        self.notifications = notifications or []
+        self.error = error
+        self.client_transaction = SimpleNamespace(home_page_response="stale")
+
+    async def get_notifications(self, kind, count=20):
+        assert kind == "Mentions"
+        if self.error:
+            raise self.error
+        return self.notifications
+
+
+class FakeScraperApi:
+    def __init__(self, tweets=None, error=None, delay=0):
+        self.tweets = tweets or []
+        self.error = error
+        self.delay = delay
+        self.queries = []
+
+    async def search(self, query, limit=20, kv=None):
+        self.queries.append((query, kv))
+        if self.delay:
+            await asyncio.sleep(self.delay)
+        if self.error:
+            raise self.error
+        for t in self.tweets:
+            yield t
+
+
+def twikit_tweet(m_id, text, screen_name, reply_to=None):
+    return SimpleNamespace(
+        id=m_id,
+        full_text=text,
+        user=SimpleNamespace(screen_name=screen_name),
+        _legacy={"in_reply_to_screen_name": reply_to},
+    )
+
+
+def twscrape_tweet(m_id, text, username, reply_to=None):
+    return SimpleNamespace(
+        id=int(m_id),
+        rawContent=text,
+        user=SimpleNamespace(username=username),
+        inReplyToUser=SimpleNamespace(username=reply_to) if reply_to else None,
+    )
+
+
+def test_fetch_notification_mentions_maps_twikit_tweets():
+    tweet = twikit_tweet("111", "@LacakBuzzer cek @detikcom", "dandy63609", reply_to="LacakBuzzer")
+    client = FakeTwikitClient([SimpleNamespace(tweet=tweet, from_user=None), SimpleNamespace(tweet=None, from_user=None)])
+
+    mentions = run_async(fetch_notification_mentions(client))
+
+    assert mentions == [
+        {
+            "id": "111",
+            "text": "@LacakBuzzer cek @detikcom",
+            "requester": "dandy63609",
+            "in_reply_to": "LacakBuzzer",
+            "source": "twikit_notifications",
+        }
+    ]
+
+
+def test_fetch_search_mentions_uses_latest_tab():
+    api = FakeScraperApi([twscrape_tweet("222", "@LacakBuzzer cek @detikcom", "dandy63609")])
+
+    mentions = run_async(fetch_search_mentions(api, "LacakBuzzer"))
+
+    assert api.queries == [("@LacakBuzzer", {"product": "Latest"})]
+    assert mentions[0]["id"] == "222"
+    assert mentions[0]["requester"] == "dandy63609"
+    assert mentions[0]["source"] == "twscrape_search"
+
+
+def test_fetch_search_mentions_times_out_instead_of_hanging():
+    api = FakeScraperApi(delay=5)
+
+    try:
+        run_async(fetch_search_mentions(api, "LacakBuzzer", timeout=0.05))
+    except asyncio.TimeoutError:
+        pass
+    else:
+        raise AssertionError("expected timeout")
+
+
+class NoAccountError(Exception):
+    """Nama sama dengan twscrape.accounts_pool.NoAccountError."""
+
+
+def test_collect_mentions_one_failing_channel_does_not_block_other():
+    tweet = twikit_tweet("111", "@LacakBuzzer cek @detikcom", "dandy63609")
+    twikit_client = FakeTwikitClient([SimpleNamespace(tweet=tweet, from_user=None)])
+    scraper_api = FakeScraperApi(error=NoAccountError("No account available for queue SearchTimeline"))
+
+    mentions, status, ok_channels = run_async(collect_mentions(twikit_client, scraper_api, "LacakBuzzer"))
+
+    assert [m["id"] for m in mentions] == ["111"]
+    assert ok_channels == 1
+    assert status["notifikasi"] == "1 tweet"
+    assert "cooldown" in status["search"]
+
+
+def test_collect_mentions_resets_twikit_transaction_on_error():
+    twikit_client = FakeTwikitClient(error=RuntimeError("Couldn't get KEY_BYTE indices"))
+
+    mentions, status, ok_channels = run_async(collect_mentions(twikit_client, None, "LacakBuzzer"))
+
+    assert mentions == []
+    assert ok_channels == 0
+    assert status["notifikasi"].startswith("gagal (RuntimeError")
+    assert twikit_client.client_transaction.home_page_response is None
