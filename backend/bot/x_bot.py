@@ -5,6 +5,9 @@ Proses utama bot X yang memantau mention dan membalas analisis.
 import argparse
 import asyncio
 import json
+import os
+import sys
+import time
 
 from bot.mention_parser import parse_mention
 
@@ -24,6 +27,33 @@ UNSAFE_ERROR_TERMS = (
 TWEET_MAX_CHARS = 280
 SHORT_CAVEAT = "\u26a0\ufe0f Indikator pola perilaku, bukan bukti koordinasi."
 PROMO_LINK = "\U0001f50d Cek analisis lengkap di sini:\nhttps://lacakbuzzer.web.id atau mentions @lacakbuzzer"
+
+# Analisis backend = scraping (fast-fail 40 dtk) + embedding + OpenRouter.
+# Timeout lama (30 dtk) membuat bot memposting pesan gagal padahal backend
+# sebenarnya masih memproses dan berhasil.
+ANALYZE_TIMEOUT_SECONDS = 120
+# Batas waktu satu kali pencarian twscrape agar polling tidak membeku.
+SEARCH_TIMEOUT_SECONDS = 45
+# Mention yang lebih tua dari ini tidak dibalas (mencegah balasan ganda
+# untuk mention lama setiap kali Space/container di-restart).
+DEFAULT_MAX_MENTION_AGE_SECONDS = 30 * 60
+# Jumlah maksimum ID mention yang diingat di file state.
+MAX_HANDLED_IDS = 1000
+
+# Error backend yang TIDAK boleh diposting sebagai balasan publik.
+SILENT_ERROR_MESSAGES = (
+    "Duplicate mention",
+    "Format mention ID tidak valid.",
+)
+
+STATE_FILE = os.path.join(
+    os.path.dirname(os.path.dirname(os.path.abspath(__file__))),
+    "data",
+    "x_bot_state.json",
+)
+
+# Epoch Twitter snowflake (ms) untuk membaca waktu pembuatan dari ID tweet.
+_TWITTER_EPOCH_MS = 1288834974657
 
 
 def truncate_tweet(text: str, max_chars: int = TWEET_MAX_CHARS) -> str:
@@ -70,6 +100,12 @@ def format_success_reply(result: dict) -> str:
     return truncate_tweet("\n".join(lines))
 
 
+def is_silent_error(error: dict) -> bool:
+    """True untuk error internal yang tidak pantas diposting ke publik."""
+    message = str(error.get("message") or "").strip()
+    return message in SILENT_ERROR_MESSAGES
+
+
 def format_error_reply(error: dict) -> str:
     """Return safe Indonesian error text for public bot replies."""
     message = str(error.get("message") or "").strip()
@@ -94,7 +130,7 @@ async def call_analyze_api(base_url: str, payload: dict, client=None) -> dict:
         else:
             import httpx
 
-            async with httpx.AsyncClient(timeout=30) as http_client:
+            async with httpx.AsyncClient(timeout=ANALYZE_TIMEOUT_SECONDS) as http_client:
                 response = await http_client.post(url, json=payload)
 
         return response.json()
@@ -126,6 +162,8 @@ async def process_mention_text(
     result = await call_analyze_api(base_url, payload, client=client)
 
     if "error" in result:
+        if is_silent_error(result):
+            return None
         return format_error_reply(result)
 
     return format_success_reply(result)
@@ -150,7 +188,9 @@ async def dry_run_mention(
 
     payload = build_analysis_payload(target, requester_username, mention_id)
     result = await call_analyze_api(base_url, payload, client=client)
-    if "error" in result:
+    if "error" in result and is_silent_error(result):
+        reply = "(tidak ada balasan: mention ini sudah pernah diproses)"
+    elif "error" in result:
         reply = format_error_reply(result)
     else:
         reply = format_success_reply(result)
@@ -170,21 +210,368 @@ async def dry_run_mention(
     )
 
 
+# ---------------------------------------------------------------------------
+# Helper polling mention (tanpa akses jaringan sendiri, mudah dites)
+# ---------------------------------------------------------------------------
+
+
+def snowflake_to_unix(tweet_id) -> float | None:
+    """Waktu pembuatan tweet (detik Unix) yang dibaca dari ID snowflake."""
+    try:
+        return ((int(tweet_id) >> 22) + _TWITTER_EPOCH_MS) / 1000
+    except (TypeError, ValueError):
+        return None
+
+
+class HandledMentions:
+    """
+    Daftar ID mention yang sudah diputuskan (dibalas, diabaikan, atau gagal).
+
+    Disimpan ke JSON lokal agar restart tidak membuat bot membalas ulang
+    mention lama. Hanya berisi ID tweet (metadata rate-limit yang diizinkan).
+    """
+
+    def __init__(self, path: str | None = STATE_FILE, limit: int = MAX_HANDLED_IDS):
+        self.path = path
+        self.limit = limit
+        self._ids: list[str] = self._load()
+        self._set = set(self._ids)
+
+    def _load(self) -> list[str]:
+        if not self.path:
+            return []
+        try:
+            with open(self.path, "r", encoding="utf-8") as f:
+                data = json.load(f)
+            ids = [str(i) for i in data.get("handled_ids", []) if str(i).isdigit()]
+            return ids[-self.limit:]
+        except Exception:
+            return []
+
+    def _save(self) -> None:
+        if not self.path:
+            return
+        try:
+            os.makedirs(os.path.dirname(self.path), exist_ok=True)
+            tmp_path = self.path + ".tmp"
+            with open(tmp_path, "w", encoding="utf-8") as f:
+                json.dump({"handled_ids": self._ids}, f)
+            os.replace(tmp_path, self.path)
+        except Exception as e:
+            print(f"   [State] Gagal menyimpan state bot: {type(e).__name__}")
+
+    def __contains__(self, mention_id) -> bool:
+        return str(mention_id) in self._set
+
+    def add(self, mention_id) -> None:
+        mention_id = str(mention_id)
+        if mention_id in self._set:
+            return
+        self._ids.append(mention_id)
+        self._set.add(mention_id)
+        if len(self._ids) > self.limit:
+            dropped = self._ids[: len(self._ids) - self.limit]
+            self._ids = self._ids[-self.limit:]
+            self._set.difference_update(dropped)
+        self._save()
+
+
+def mention_from_twikit(tweet, from_user=None) -> dict:
+    """Ubah Tweet twikit (twifork) menjadi dict mention standar."""
+    user = from_user or getattr(tweet, "user", None)
+    legacy = getattr(tweet, "_legacy", None)
+    in_reply_to = legacy.get("in_reply_to_screen_name") if isinstance(legacy, dict) else None
+    return {
+        "id": str(getattr(tweet, "id", "") or ""),
+        "text": getattr(tweet, "full_text", "") or getattr(tweet, "text", "") or "",
+        "requester": (getattr(user, "screen_name", "") if user else "") or "",
+        "in_reply_to": in_reply_to or "",
+        "source": "twikit_notifications",
+    }
+
+
+def mention_from_twscrape(tweet) -> dict:
+    """Ubah Tweet twscrape menjadi dict mention standar."""
+    user = getattr(tweet, "user", None)
+    reply_user = getattr(tweet, "inReplyToUser", None)
+    return {
+        "id": str(getattr(tweet, "id", "") or ""),
+        "text": getattr(tweet, "rawContent", "") or getattr(tweet, "text", "") or "",
+        "requester": (getattr(user, "username", "") if user else "") or "",
+        "in_reply_to": (getattr(reply_user, "username", "") if reply_user else "") or "",
+        "source": "twscrape_search",
+    }
+
+
+async def fetch_notification_mentions(twikit_client, count: int = 20) -> list[dict]:
+    """Kanal 1: tab Mentions di notifikasi akun bot (via twikit/twifork)."""
+    notifs = await twikit_client.get_notifications("Mentions", count=count)
+    mentions = []
+    for n in notifs:
+        tweet = getattr(n, "tweet", None)
+        if tweet is None:
+            continue
+        mentions.append(mention_from_twikit(tweet, getattr(n, "from_user", None)))
+    return mentions
+
+
+async def fetch_search_mentions(
+    scraper_api,
+    bot_username: str,
+    limit: int = 20,
+    timeout: float = SEARCH_TIMEOUT_SECONDS,
+) -> list[dict]:
+    """Kanal 2: pencarian publik "@bot" (tab Latest) via twscrape."""
+
+    async def _collect():
+        items = []
+        async for tweet in scraper_api.search(
+            f"@{bot_username}", limit=limit, kv={"product": "Latest"}
+        ):
+            items.append(tweet)
+        return items
+
+    raw_tweets = await asyncio.wait_for(_collect(), timeout=timeout)
+    return [mention_from_twscrape(t) for t in raw_tweets]
+
+
+def select_new_mentions(
+    mentions: list[dict],
+    bot_username: str,
+    handled,
+    now: float | None = None,
+    max_age_seconds: float = DEFAULT_MAX_MENTION_AGE_SECONDS,
+) -> list[dict]:
+    """
+    Saring mention yang perlu diproses, urut dari yang paling lama.
+
+    Diabaikan: ID ganda, ID yang sudah ditangani, tweet bot sendiri,
+    balasan ke tweet bot (agar komentar di thread balasan bot tidak memicu
+    analisis baru), dan mention yang lebih tua dari max_age_seconds.
+    """
+    now = time.time() if now is None else now
+    bot = bot_username.strip().lstrip("@").lower()
+    seen = set()
+    selected = []
+
+    for m in mentions:
+        m_id = str(m.get("id") or "")
+        if not m_id.isdigit() or not m.get("text"):
+            continue
+        if m_id in seen or m_id in handled:
+            continue
+        seen.add(m_id)
+
+        if (m.get("requester") or "").lower() == bot:
+            continue
+        if (m.get("in_reply_to") or "").lower() == bot:
+            continue
+
+        created = snowflake_to_unix(m_id)
+        if created is not None and now - created > max_age_seconds:
+            continue
+
+        selected.append(m)
+
+    return sorted(selected, key=lambda m: int(m["id"]))
+
+
+def _short_error(exc: Exception) -> str:
+    text = f"{type(exc).__name__}: {exc}".strip()
+    return text[:200]
+
+
+async def collect_mentions(twikit_client, scraper_api, bot_username: str):
+    """
+    Ambil mention dari semua kanal aktif. Error satu kanal tidak
+    menghentikan kanal lain. Mengembalikan (mentions, status_per_kanal, jumlah_kanal_ok).
+    """
+    mentions: list[dict] = []
+    status: dict[str, str] = {}
+    ok_channels = 0
+
+    if twikit_client is not None:
+        try:
+            found = await fetch_notification_mentions(twikit_client)
+            mentions.extend(found)
+            status["notifikasi"] = f"{len(found)} tweet"
+            ok_channels += 1
+        except Exception as e:
+            status["notifikasi"] = f"gagal ({_short_error(e)})"
+            # Self-healing: reset client_transaction bila state tersangkut
+            transaction = getattr(twikit_client, "client_transaction", None)
+            if transaction is not None and hasattr(transaction, "home_page_response"):
+                transaction.home_page_response = None
+    else:
+        status["notifikasi"] = "nonaktif (cookie akun bot tidak ada)"
+
+    if scraper_api is not None:
+        try:
+            found = await fetch_search_mentions(scraper_api, bot_username)
+            mentions.extend(found)
+            status["search"] = f"{len(found)} tweet"
+            ok_channels += 1
+        except asyncio.TimeoutError:
+            status["search"] = f"timeout setelah {SEARCH_TIMEOUT_SECONDS} detik"
+        except Exception as e:
+            name = type(e).__name__
+            if name == "NoAccountError":
+                status["search"] = "semua akun twscrape sedang cooldown/nonaktif, dilewati"
+            else:
+                status["search"] = f"gagal ({_short_error(e)})"
+    else:
+        status["search"] = "nonaktif"
+
+    return mentions, status, ok_channels
+
+
+# ---------------------------------------------------------------------------
+# Setup client
+# ---------------------------------------------------------------------------
+
+
+def _load_dotenv_for_cli() -> None:
+    """Muat .env di root repo saat x_bot dijalankan langsung (tidak menimpa env yang ada)."""
+    root = os.path.dirname(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
+    path = os.path.join(root, ".env")
+    if not os.path.exists(path):
+        return
+    with open(path, "r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if line and not line.startswith("#") and "=" in line:
+                key, val = line.split("=", 1)
+                os.environ.setdefault(key.strip(), val.strip().strip("'\""))
+
+
+def _bot_cookies(bot_username: str) -> tuple[str | None, str | None]:
+    """Cari cookie auth_token & ct0 akun bot di TWITTER_ACCOUNTS_JSON, lalu X_AUTH_TOKEN/X_CT0."""
+    auth_token = None
+    ct0 = None
+    accounts_json = os.getenv("TWITTER_ACCOUNTS_JSON")
+    if accounts_json:
+        try:
+            for acc in json.loads(accounts_json):
+                if acc.get("username", "").lower() == bot_username.lower():
+                    auth_token = acc.get("auth_token")
+                    ct0 = acc.get("ct0")
+                    break
+        except Exception as e:
+            print(f"Gagal memparsing TWITTER_ACCOUNTS_JSON: {type(e).__name__}")
+
+    if not auth_token or not ct0:
+        auth_token = os.getenv("X_AUTH_TOKEN")
+        ct0 = os.getenv("X_CT0")
+    return auth_token, ct0
+
+
+def build_twikit_client(bot_username: str):
+    auth_token, ct0 = _bot_cookies(bot_username)
+    if not (auth_token and ct0):
+        print("⚠️ Cookie akun bot (auth_token & ct0) tidak ditemukan. Kanal notifikasi mati dan bot berjalan baca-saja.")
+        return None
+    try:
+        from twikit import Client
+
+        client = Client("en-US")
+        client.set_cookies({"auth_token": auth_token, "ct0": ct0})
+        print("Twikit Client terinisialisasi menggunakan cookies akun bot.")
+        return client
+    except Exception as e:
+        print(f"❌ Gagal menginisialisasi Twikit Client: {_short_error(e)}")
+        return None
+
+
+async def build_scraper_api():
+    from twscrape import API
+    from services.init_db import init_twitter_db
+
+    # Inisialisasi basis data akun twscrape di runtime
+    init_twitter_db()
+
+    tws_data_dir = os.getenv("TWS_DATA_DIR", "")
+    db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
+    # raise_when_no_account=True: bila semua akun sedang cooldown, twscrape langsung
+    # melempar NoAccountError. Default-nya menunggu sampai akun terbuka (bisa 15 menit),
+    # yang membuat seluruh loop bot (termasuk kanal notifikasi) ikut membeku.
+    scraper_api = API(db_path, raise_when_no_account=True)
+
+    try:
+        all_accounts = await scraper_api.pool.get_all()
+        active_count = sum(1 for a in all_accounts if a.active)
+        if active_count == 0:
+            print("⚠️ Tidak ada akun twscrape aktif! Kanal search tidak akan menemukan mention.")
+            print("   Pastikan TWITTER_ACCOUNTS_JSON berisi credentials yang valid.")
+        else:
+            print(f"✅ {active_count} akun twscrape aktif untuk kanal search.")
+    except Exception as e:
+        print(f"⚠️ Tidak bisa memeriksa status akun twscrape: {_short_error(e)}")
+    return scraper_api
+
+
+# ---------------------------------------------------------------------------
+# CLI & loop utama
+# ---------------------------------------------------------------------------
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="X bot helper.")
     parser.add_argument("--dry-run", action="store_true")
+    parser.add_argument(
+        "--check",
+        action="store_true",
+        help="Jalankan satu kali pembacaan kedua kanal mention lalu keluar (tanpa analisis, tanpa posting).",
+    )
     parser.add_argument("--text", help="Required for dry-run mode")
     parser.add_argument("--bot-username", required=True)
     parser.add_argument("--requester", help="Required for dry-run mode")
     parser.add_argument("--mention-id", help="Required for dry-run mode")
-    parser.add_argument("--base-url", required=True)
+    parser.add_argument("--base-url", help="Required for dry-run and bot mode")
     parser.add_argument("--poll-interval", type=int, default=60)
     return parser
 
 
+async def check_channels(bot_username: str) -> int:
+    """Diagnostik: tampilkan apa yang dilihat tiap kanal, tanpa memanggil backend atau memposting."""
+    twikit_client = build_twikit_client(bot_username)
+    scraper_api = await build_scraper_api()
+    mentions, status, _ = await collect_mentions(twikit_client, scraper_api, bot_username)
+
+    print("\nStatus kanal:")
+    for channel, info in status.items():
+        print(f"   {channel}: {info}")
+
+    print(f"\nTotal {len(mentions)} tweet ditemukan (sebelum filter):")
+    now = time.time()
+    for m in sorted(mentions, key=lambda m: int(m["id"]) if m["id"].isdigit() else 0):
+        created = snowflake_to_unix(m["id"])
+        age = f"{int((now - created) / 60)} mnt lalu" if created else "?"
+        target = parse_mention(m["text"], bot_username, requester_username=m["requester"])
+        text = " ".join(m["text"].split())[:100]
+        print(f"   [{m['source']}] id={m['id']} @{m['requester']} ({age}) target={target or '-'}")
+        print(f"      {text}")
+
+    fresh = select_new_mentions(mentions, bot_username, handled=HandledMentions())
+    print(f"\n{len(fresh)} mention akan diproses bila bot berjalan sekarang.")
+    return 0
+
+
 async def main(argv=None) -> int:
+    # Konsol Windows (cp1252) tidak bisa mencetak emoji di log bot.
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
+
     parser = build_arg_parser()
     args = parser.parse_args(argv)
+
+    if args.check:
+        _load_dotenv_for_cli()
+        return await check_channels(args.bot_username)
+
+    if not args.base_url:
+        parser.error("Argument --base-url is required.")
 
     if args.dry_run:
         if not (args.text and args.requester and args.mention_id):
@@ -198,247 +585,101 @@ async def main(argv=None) -> int:
         )
         print(output)
         return 0
-    else:
-        await start_bot(
-            base_url=args.base_url,
-            bot_username=args.bot_username,
-            poll_interval=args.poll_interval
-        )
-        return 0
+
+    _load_dotenv_for_cli()
+    await start_bot(
+        base_url=args.base_url,
+        bot_username=args.bot_username,
+        poll_interval=args.poll_interval,
+    )
+    return 0
 
 
 async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
     """Memulai loop polling mention Twitter/X dan membalas analisis secara otomatis."""
-    import time
-    from twikit import Client
-    from twscrape import API, gather
-    from services.init_db import init_twitter_db
-    import os
+    import random
+
+    max_age = int(os.getenv("X_BOT_MAX_MENTION_AGE", str(DEFAULT_MAX_MENTION_AGE_SECONDS)))
 
     print(f"X Bot aktif! Memantau mention untuk @{bot_username}...")
     print(f"   Backend URL: {base_url}")
     print(f"   Interval polling: {poll_interval} detik")
+    print(f"   Mention lebih tua dari {max_age // 60} menit diabaikan")
 
-    # Inisialisasi basis data Twitter scraper di runtime (scraping account)
-    init_twitter_db()
-    
-    tws_data_dir = os.getenv("TWS_DATA_DIR", "")
-    db_path = os.path.join(tws_data_dir, "accounts.db") if tws_data_dir else "accounts.db"
-    scraper_api = API(db_path)
-
-    # Periksa apakah ada akun twscrape yang aktif sebelum mulai polling
     try:
-        all_accounts = await scraper_api.pool.get_all()
-        active_count = sum(1 for a in all_accounts if a.active)
-        if active_count == 0:
-            print("\u26a0\ufe0f Tidak ada akun twscrape aktif! Pencarian mention mungkin tidak berfungsi.")
-            print("   Pastikan TWITTER_ACCOUNTS_JSON berisi credentials yang valid.")
-        else:
-            print(f"\u2705 {active_count} akun twscrape aktif dan siap digunakan untuk pencarian.")
+        scraper_api = await build_scraper_api()
     except Exception as e:
-        print(f"\u26a0\ufe0f Tidak bisa memeriksa status akun twscrape: {e}")
+        print(f"⚠️ Kanal search dimatikan: {_short_error(e)}")
+        scraper_api = None
+    twikit_client = build_twikit_client(bot_username)
 
-    # Inisialisasi client Twikit menggunakan cookies untuk memposting balasan
-    accounts_json = os.getenv("TWITTER_ACCOUNTS_JSON")
-    auth_token = None
-    ct0 = None
+    handled = HandledMentions()
 
-    if accounts_json:
-        try:
-            accounts = json.loads(accounts_json)
-            for acc in accounts:
-                if acc.get("username", "").lower() == bot_username.lower():
-                    auth_token = acc.get("auth_token")
-                    ct0 = acc.get("ct0")
-                    break
-        except Exception as e:
-            print(f"Gagal memparsing TWITTER_ACCOUNTS_JSON: {e}")
-    
-    # Fallback to direct env vars if not found in JSON
-    if not auth_token or not ct0:
-        auth_token = os.getenv("X_AUTH_TOKEN")
-        ct0 = os.getenv("X_CT0")
-
-    twikit_client = None
-    if auth_token and ct0:
-        try:
-            twikit_client = Client('en-US')
-            twikit_client.set_cookies({
-                'auth_token': auth_token,
-                'ct0': ct0
-            })
-            print("Twikit Client terinisialisasi menggunakan cookies untuk memposting balasan.")
-        except Exception as e:
-            print(f"❌ Gagal menginisialisasi Twikit Client: {e}")
-    else:
-        print("⚠️ Kredensial X_AUTH_TOKEN dan X_CT0 tidak lengkap di .env atau JSON. Bot berjalan dalam mode baca-saja.")
-
-    # Exponential backoff saat terjadi error berturutan
+    # Exponential backoff bila SEMUA kanal gagal berturut-turut
     MAX_BACKOFF_MULTIPLIER = 8
     backoff_multiplier = 1
-
-    # Local set untuk mencegah duplikasi balasan jika rate-limit db terlambat tersinkronisasi
-    replied_mentions = set()
-    # ID tweet mention terakhir yang dilihat; digunakan untuk hanya mengambil mention baru
-    last_seen_id: str | None = None
-
-    import random
 
     while True:
         try:
             print(f"\n[{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
 
-            # Kumpulkan mention dari dua kanal independen:
-            # Kanal 1: Notifikasi langsung akun bot via Twikit (cepat & tanpa limit search)
-            # Kanal 2: Pencarian publik via twscrape (backup/fallback komprehensif)
-            incoming_mentions = []
-
-            # 1. Twikit Notifications
-            if twikit_client:
-                try:
-                    notifs = await twikit_client.get_notifications("Mentions", count=20)
-                    for n in notifs:
-                        if hasattr(n, "tweet") and n.tweet:
-                            t_id = str(n.tweet.id)
-                            t_text = getattr(n.tweet, "full_text", "") or getattr(n.tweet, "text", "")
-                            t_user = ""
-                            if hasattr(n, "from_user") and n.from_user:
-                                t_user = getattr(n.from_user, "screen_name", "")
-                            if not t_user and hasattr(n.tweet, "user") and n.tweet.user:
-                                t_user = getattr(n.tweet.user, "screen_name", "")
-
-                            # Abaikan jika tweet dari bot itu sendiri
-                            if t_user.lower() == bot_username.lower():
-                                continue
-
-                            # Abaikan tweet lama jika last_seen_id sudah terpasang
-                            if last_seen_id and t_id.isdigit() and last_seen_id.isdigit():
-                                if int(t_id) <= int(last_seen_id):
-                                    continue
-
-                            if t_id and t_text:
-                                incoming_mentions.append({
-                                    "id": t_id,
-                                    "text": t_text,
-                                    "requester": t_user,
-                                    "source": "twikit_notifications"
-                                })
-                except Exception as e:
-                    print(f"   [Twikit Notifications] Catatan: {e}")
-                    # Self-healing: reset client_transaction bila state tersangkut
-                    if hasattr(twikit_client, "client_transaction") and twikit_client.client_transaction:
-                        twikit_client.client_transaction.home_page_response = None
-
-            # 2. Twscrape Search (Solusi 1)
-            try:
-                # Query pencarian murni di Twitter Web GraphQL tanpa operator yang tidak didukung
-                query = f"@{bot_username}"
-
-                raw_tweets = await gather(
-                    scraper_api.search(query, limit=20, kv={"product": "Latest"})
-                )
-                for t in raw_tweets:
-                    t_id = str(t.id)
-                    t_user = getattr(t.user, "username", "")
-
-                    # Abaikan jika tweet dari bot itu sendiri
-                    if t_user.lower() == bot_username.lower():
-                        continue
-
-                    # Abaikan tweet lama jika last_seen_id sudah terpasang
-                    if last_seen_id and t_id.isdigit() and last_seen_id.isdigit():
-                        if int(t_id) <= int(last_seen_id):
-                            continue
-
-                    incoming_mentions.append({
-                        "id": t_id,
-                        "text": getattr(t, "rawContent", "") or getattr(t, "text", ""),
-                        "requester": t_user,
-                        "source": "twscrape_search"
-                    })
-            except Exception as e:
-                print(f"   [twscrape Search] Catatan: {e}")
-
-            # Hilangkan duplikasi berdasarkan ID tweet mention
-            seen_ids = set()
-            unique_mentions = []
-            for m in incoming_mentions:
-                if m["id"] not in seen_ids:
-                    seen_ids.add(m["id"])
-                    unique_mentions.append(m)
-
-            # Urutkan secara kronologis (dari ID terkecil ke terbesar)
-            unique_mentions = sorted(
-                unique_mentions,
-                key=lambda m: int(m["id"]) if m["id"].isdigit() else 0
+            mentions, status, ok_channels = await collect_mentions(
+                twikit_client, scraper_api, bot_username
             )
+            for channel, info in status.items():
+                print(f"   [{channel}] {info}")
 
-            # Perbarui last_seen_id ke ID tertinggi
-            if unique_mentions:
-                valid_ids = [int(m["id"]) for m in unique_mentions if m["id"].isdigit()]
-                if valid_ids:
-                    candidate_id = str(max(valid_ids))
-                    if last_seen_id is None or int(candidate_id) > int(last_seen_id):
-                        last_seen_id = candidate_id
+            new_mentions = select_new_mentions(
+                mentions, bot_username, handled, max_age_seconds=max_age
+            )
+            print(f"   Ditemukan {len(new_mentions)} mention baru untuk @{bot_username}.")
 
-            print(f"   Ditemukan {len(unique_mentions)} mention baru untuk @{bot_username}.")
-
-            for m in unique_mentions:
+            for m in new_mentions:
                 mention_id = m["id"]
-                if mention_id in replied_mentions:
-                    continue
-
                 text = m["text"]
                 requester = m["requester"]
 
-                # Proses mention teks untuk melihat apakah ada target analisis valid
+                # Tandai lebih dulu: crash atau gagal posting tidak boleh
+                # berujung balasan ganda di siklus berikutnya.
+                handled.add(mention_id)
+
                 reply_text = await process_mention_text(
                     text=text,
                     bot_username=bot_username,
                     requester_username=requester,
                     mention_id=mention_id,
-                    base_url=base_url
+                    base_url=base_url,
                 )
+                if not reply_text:
+                    continue
 
-                if reply_text:
-                    print(f"Memproses mention dari @{requester} (ID: {mention_id})")
-                    print(f"   Isi tweet: \"{text}\"")
-                    print(f"   Draft Balasan:\n{reply_text}")
+                print(f"Memproses mention dari @{requester} (ID: {mention_id}, kanal: {m['source']})")
+                print(f"   Isi tweet: \"{text}\"")
+                print(f"   Draft Balasan:\n{reply_text}")
 
-                    if twikit_client:
-                        try:
-                            # Anti-ban: delay acak sebelum membalas untuk mensimulasikan pengetikan (human behavior)
-                            delay = random.uniform(5.0, 12.0)
-                            print(f"   [Anti-Ban] Menunggu {delay:.1f} detik sebelum mengirim balasan...")
-                            await asyncio.sleep(delay)
+                if twikit_client is None:
+                    print("   Balasan tidak diposting (cookie akun bot kosong).")
+                    continue
 
-                            # Menggunakan twikit create_tweet untuk reply
-                            await twikit_client.create_tweet(
-                                text=reply_text,
-                                reply_to=str(mention_id)
-                            )
-                            print(f"   Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
-                            
-                            # Catat mention_id agar tidak dibalas ganda pada siklus berikutnya
-                            replied_mentions.add(mention_id)
-                            if len(replied_mentions) > 500:
-                                # Hindari memory leak
-                                replied_mentions = set(list(replied_mentions)[-250:])
-                                
-                        except Exception as e:
-                            print(f"   Gagal mengirim balasan ke X/Twitter: {e}")
-                    else:
-                        print("   Balasan tidak diposting (kredensial cookies kosong).")
-                else:
-                    # Mengabaikan mention yang tidak valid
-                    pass
+                try:
+                    # Anti-ban: delay acak sebelum membalas (meniru perilaku manusia)
+                    delay = random.uniform(5.0, 12.0)
+                    print(f"   [Anti-Ban] Menunggu {delay:.1f} detik sebelum mengirim balasan...")
+                    await asyncio.sleep(delay)
 
-            # Iterasi berhasil - reset backoff ke normal
+                    await twikit_client.create_tweet(text=reply_text, reply_to=str(mention_id))
+                    print(f"   Balasan berhasil terkirim ke X/Twitter untuk ID: {mention_id}")
+                except Exception as e:
+                    print(f"   Gagal mengirim balasan ke X/Twitter: {_short_error(e)}")
+
+            enabled_channels = (twikit_client is not None) + (scraper_api is not None)
+            if enabled_channels and ok_channels == 0:
+                raise RuntimeError("semua kanal pembacaan mention gagal")
+
             backoff_multiplier = 1
 
         except Exception as e:
-            print(f"Error dalam polling loop: {e}")
-            # Terapkan exponential backoff untuk mengurangi tekanan ke Twitter saat error
+            print(f"Error dalam polling loop: {_short_error(e)}")
             sleep_duration = poll_interval * backoff_multiplier
             print(f"   Backoff aktif: menunggu {sleep_duration} detik sebelum retry (multiplier: {backoff_multiplier}x)...")
             backoff_multiplier = min(backoff_multiplier * 2, MAX_BACKOFF_MULTIPLIER)

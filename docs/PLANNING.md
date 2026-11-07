@@ -48,6 +48,18 @@ Saat ini integrasi bot otomatis untuk Twitter/X (`@lacakbuzzer`) masih berada da
 2. **Pengujian Residential vs Cloud:** Menguji bot di lingkungan lokal (menggunakan IP koneksi internet rumah/residensial) untuk melihat apakah deteksi mention berjalan lancar dibanding IP cloud hosting.
 3. **Penyediaan CLI Test:** Menyediakan utilitas CLI lokal untuk mensimulasikan mention spesifik tanpa bergantung pada polling background.
 
+#### 4. Perbaikan di Kode Polling (`x_bot.py`)
+* **Loop tidak lagi membeku saat cooldown twscrape.** Sebelumnya, saat semua akun twscrape terkena cooldown `SearchTimeline`, twscrape menunggu sampai akun terbuka (~15 menit) dan seluruh loop bot (termasuk kanal notifikasi) ikut berhenti. Sekarang kanal search langsung dilewati (`raise_when_no_account=True` + timeout 45 detik) dan kanal notifikasi tetap berjalan.
+* **Tidak membalas ulang mention lama setelah restart.** ID mention yang sudah ditangani disimpan di `backend/data/x_bot_state.json`, dan mention yang lebih tua dari 30 menit diabaikan (atur dengan `X_BOT_MAX_MENTION_AGE`, dalam detik). Penanda `last_seen_id` dihapus karena bisa membuang mention dari kanal search yang terindeks lebih lambat dari kanal notifikasi.
+* **Pesan internal tidak diposting.** Error backend `Duplicate mention` sebelumnya ikut diposting sebagai balasan publik; sekarang diabaikan.
+* **Timeout panggilan analisis dinaikkan dari 30 menjadi 120 detik.** Scraping sendiri boleh memakan waktu sampai 40 detik, jadi timeout lama sering membuat bot membalas "Maaf, analisis belum bisa diproses" padahal backend berhasil.
+* **Balasan ke tweet bot sendiri diabaikan**, agar komentar orang lain di thread balasan bot tidak memicu analisis ulang terhadap akun yang disebut di thread tersebut.
+* **Mode diagnostik:** jalankan dari folder `backend/` untuk melihat apa yang ditangkap tiap kanal tanpa memanggil analisis dan tanpa memposting:
+  ```bash
+  python -m bot.x_bot --bot-username lacakbuzzer --check
+  ```
+  Bandingkan hasilnya di koneksi rumah dan di Hugging Face Space untuk membuktikan apakah masalahnya IP cloud atau filter notifikasi akun.
+
 ---
 
 ### B. Perbandingan Keuntungan: X Bot vs Alternatif Platform
