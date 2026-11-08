@@ -303,6 +303,7 @@ from bot.x_bot import (
     collect_mentions,
     fetch_notification_mentions,
     fetch_search_mentions,
+    log_cookie_account,
     select_new_mentions,
     snowflake_to_unix,
 )
@@ -404,17 +405,60 @@ def test_handled_mentions_survive_corrupt_file(tmp_path):
     assert "10" in HandledMentions(path=str(path))
 
 
-class FakeTwikitClient:
-    def __init__(self, notifications=None, error=None):
-        self.notifications = notifications or []
-        self.error = error
-        self.client_transaction = SimpleNamespace(home_page_response="stale")
+def legacy_response(tweets=(), users=(), notifications=None):
+    """Bentuk respons /i/api/2/notifications/*.json (adaptive JSON)."""
+    go = {
+        "tweets": {t["id_str"]: t for t in tweets},
+        "users": {u["id_str"]: u for u in users},
+    }
+    if notifications is not None:
+        go["notifications"] = notifications
+    entries = [{"entryId": f"tweet-{t['id_str']}"} for t in tweets]
+    entries.append({"entryId": "cursor-bottom-0"})
+    return {"globalObjects": go, "timeline": {"instructions": [{"addEntries": {"entries": entries}}]}}
 
-    async def get_notifications(self, kind, count=20):
-        assert kind == "Mentions"
+
+def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=()):
+    return {
+        "id_str": t_id,
+        "full_text": text,
+        "user_id_str": user_id,
+        "in_reply_to_screen_name": reply_to,
+        "entities": {"user_mentions": [{"screen_name": m} for m in mentions]},
+    }
+
+
+class FakeV11:
+    def __init__(self, mentions_response=None, all_response=None, error=None, screen_name="LacakBuzzer"):
+        self.mentions_response = mentions_response or legacy_response()
+        self.all_response = all_response or legacy_response()
+        self.error = error
+        self.screen_name = screen_name
+        self.calls = []
+
+    async def notifications_mentions(self, count, cursor):
+        self.calls.append("mentions")
         if self.error:
             raise self.error
-        return self.notifications
+        return self.mentions_response, None
+
+    async def notifications_all(self, count, cursor):
+        self.calls.append("all")
+        if self.error:
+            raise self.error
+        return self.all_response, None
+
+    async def settings(self):
+        return {"screen_name": self.screen_name}, None
+
+
+class FakeTwikitClient:
+    def __init__(self, **kwargs):
+        self.v11 = FakeV11(**kwargs)
+        self.client_transaction = SimpleNamespace(home_page_response="stale")
+
+
+USERS = [{"id_str": "9", "screen_name": "dandy63609"}, {"id_str": "1", "screen_name": "LacakBuzzer"}]
 
 
 class FakeScraperApi:
@@ -434,15 +478,6 @@ class FakeScraperApi:
             yield t
 
 
-def twikit_tweet(m_id, text, screen_name, reply_to=None):
-    return SimpleNamespace(
-        id=m_id,
-        full_text=text,
-        user=SimpleNamespace(screen_name=screen_name),
-        _legacy={"in_reply_to_screen_name": reply_to},
-    )
-
-
 def twscrape_tweet(m_id, text, username, reply_to=None):
     return SimpleNamespace(
         id=int(m_id),
@@ -452,11 +487,17 @@ def twscrape_tweet(m_id, text, username, reply_to=None):
     )
 
 
-def test_fetch_notification_mentions_maps_twikit_tweets():
-    tweet = twikit_tweet("111", "@LacakBuzzer cek @detikcom", "dandy63609", reply_to="LacakBuzzer")
-    client = FakeTwikitClient([SimpleNamespace(tweet=tweet, from_user=None), SimpleNamespace(tweet=None, from_user=None)])
+def test_fetch_notification_mentions_reads_raw_mentions_response():
+    response = legacy_response(
+        tweets=[
+            legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9", reply_to="LacakBuzzer", mentions=["LacakBuzzer", "detikcom"]),
+            legacy_tweet("110", "tweet konteks tanpa mention bot", "9"),
+        ],
+        users=USERS,
+    )
+    client = FakeTwikitClient(mentions_response=response)
 
-    mentions = run_async(fetch_notification_mentions(client))
+    mentions, info = run_async(fetch_notification_mentions(client, "LacakBuzzer"))
 
     assert mentions == [
         {
@@ -464,9 +505,58 @@ def test_fetch_notification_mentions_maps_twikit_tweets():
             "text": "@LacakBuzzer cek @detikcom",
             "requester": "dandy63609",
             "in_reply_to": "LacakBuzzer",
-            "source": "twikit_notifications",
+            "source": "notif_mentions",
         }
     ]
+    assert info == "mentions.json=1"
+    assert client.v11.calls == ["mentions"]  # tab All tidak perlu dibaca
+
+
+def test_fetch_notification_mentions_ignores_empty_notifications_key():
+    # twifork mengambil cabang `notifications` bila kunci itu ada (meski kosong)
+    # dan melewatkan tweet mention; parser kita tetap membaca tweet-nya.
+    response = legacy_response(
+        tweets=[legacy_tweet("111", "@lacakbuzzer analisis akun ini @detikcom", "9")],
+        users=USERS,
+        notifications={},
+    )
+    mentions, _ = run_async(fetch_notification_mentions(FakeTwikitClient(mentions_response=response), "LacakBuzzer"))
+
+    assert [m["id"] for m in mentions] == ["111"]
+
+
+def test_fetch_notification_mentions_falls_back_to_all_tab():
+    all_response = legacy_response(
+        tweets=[legacy_tweet("222", "@LacakBuzzer cek @detikcom", "9")],
+        users=USERS,
+    )
+    client = FakeTwikitClient(all_response=all_response)
+
+    mentions, info = run_async(fetch_notification_mentions(client, "LacakBuzzer", verbose=True))
+
+    assert [m["source"] for m in mentions] == ["notif_all"]
+    assert client.v11.calls == ["mentions", "all"]
+    assert "mentions.json=0" in info and "all.json=1" in info
+    assert "tweets=0" in info and "tweets=1" in info
+    assert "'cursor-bottom': 1" in info
+
+
+def test_bot_mention_detection_does_not_match_longer_usernames():
+    response = legacy_response(
+        tweets=[legacy_tweet("111", "@LacakBuzzer2 halo", "9")],
+        users=USERS,
+    )
+    mentions, _ = run_async(fetch_notification_mentions(FakeTwikitClient(mentions_response=response), "LacakBuzzer"))
+
+    assert mentions == []
+
+
+def test_log_cookie_account_warns_on_wrong_account(capsys):
+    run_async(log_cookie_account(FakeTwikitClient(screen_name="lacakbuzzer2"), "lacakbuzzer"))
+    assert "BUKAN @lacakbuzzer" in capsys.readouterr().out
+
+    run_async(log_cookie_account(FakeTwikitClient(screen_name="LacakBuzzer"), "lacakbuzzer"))
+    assert "login sebagai @LacakBuzzer" in capsys.readouterr().out
 
 
 def test_fetch_search_mentions_uses_latest_tab():
@@ -496,15 +586,15 @@ class NoAccountError(Exception):
 
 
 def test_collect_mentions_one_failing_channel_does_not_block_other():
-    tweet = twikit_tweet("111", "@LacakBuzzer cek @detikcom", "dandy63609")
-    twikit_client = FakeTwikitClient([SimpleNamespace(tweet=tweet, from_user=None)])
+    response = legacy_response(tweets=[legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9")], users=USERS)
+    twikit_client = FakeTwikitClient(mentions_response=response)
     scraper_api = FakeScraperApi(error=NoAccountError("No account available for queue SearchTimeline"))
 
     mentions, status, ok_channels = run_async(collect_mentions(twikit_client, scraper_api, "LacakBuzzer"))
 
     assert [m["id"] for m in mentions] == ["111"]
     assert ok_channels == 1
-    assert status["notifikasi"] == "1 tweet"
+    assert status["notifikasi"] == "1 tweet (mentions.json=1)"
     assert "cooldown" in status["search"]
 
 
