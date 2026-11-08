@@ -405,7 +405,7 @@ def test_handled_mentions_survive_corrupt_file(tmp_path):
     assert "10" in HandledMentions(path=str(path))
 
 
-def legacy_response(tweets=(), users=(), notifications=None):
+def legacy_response(tweets=(), users=(), notifications=None, top_cursor=None):
     """Bentuk respons /i/api/2/notifications/*.json (adaptive JSON)."""
     go = {
         "tweets": {t["id_str"]: t for t in tweets},
@@ -415,6 +415,8 @@ def legacy_response(tweets=(), users=(), notifications=None):
         go["notifications"] = notifications
     entries = [{"entryId": f"tweet-{t['id_str']}"} for t in tweets]
     entries.append({"entryId": "cursor-bottom-0"})
+    if top_cursor:
+        entries.insert(0, {"entryId": "cursor-top-1", "content": {"operation": {"cursor": {"value": top_cursor, "cursorType": "Top"}}}})
     return {"globalObjects": go, "timeline": {"instructions": [{"addEntries": {"entries": entries}}]}}
 
 
@@ -430,8 +432,10 @@ def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=(), reply_to_statu
 
 
 class FakeV11:
-    def __init__(self, mentions_response=None, all_response=None, error=None, screen_name="LacakBuzzer"):
+    def __init__(self, mentions_response=None, all_response=None, error=None, screen_name="LacakBuzzer", newer_responses=None):
         self.mentions_response = mentions_response or legacy_response()
+        self.newer_responses = newer_responses or {}
+        self.cursors = []
         self.all_response = all_response or legacy_response()
         self.error = error
         self.screen_name = screen_name
@@ -439,8 +443,11 @@ class FakeV11:
 
     async def notifications_mentions(self, count, cursor):
         self.calls.append("mentions")
+        self.cursors.append(cursor)
         if self.error:
             raise self.error
+        if cursor is not None:
+            return self.newer_responses.get(cursor, legacy_response()), None
         return self.mentions_response, None
 
     async def notifications_all(self, count, cursor):
@@ -510,7 +517,7 @@ def test_fetch_notification_mentions_reads_raw_mentions_response():
             "source": "notif_mentions",
         }
     ]
-    assert info == "mentions.json=1"
+    assert info.startswith("mentions.json=1, terbaru ")
     assert client.v11.calls == ["mentions"]  # tab All tidak perlu dibaca
 
 
@@ -596,7 +603,7 @@ def test_collect_mentions_one_failing_channel_does_not_block_other():
 
     assert [m["id"] for m in mentions] == ["111"]
     assert ok_channels == 1
-    assert status["notifikasi"] == "1 tweet (mentions.json=1)"
+    assert status["notifikasi"].startswith("1 tweet (mentions.json=1, terbaru ")
     assert "cooldown" in status["search"]
 
 
@@ -665,3 +672,43 @@ def test_twscrape_standalone_mention_is_not_treated_as_thread_reply():
 
     assert standalone["in_reply_to"] == ""
     assert real_reply["in_reply_to"] == "lacakbuzzer"
+
+
+def test_fetch_notification_mentions_follows_top_cursor_for_newer_items():
+    now = _time.time()
+    old_id = make_id(now - 3600)
+    new_id = make_id(now - 20)
+    stale = legacy_response(
+        tweets=[legacy_tweet(old_id, "@lacakbuzzer cek @elonmusk", "9")],
+        users=USERS,
+        top_cursor="TOP-1",
+    )
+    newer = legacy_response(
+        tweets=[legacy_tweet(new_id, "@lacakbuzzer cek @detikcom", "9")],
+        users=USERS,
+        top_cursor="TOP-2",
+    )
+    client = FakeTwikitClient(mentions_response=stale, newer_responses={"TOP-1": newer})
+
+    # Polling 1: belum ada cursor, hanya simpan cursor-top.
+    first, info1 = run_async(fetch_notification_mentions(client, "lacakbuzzer"))
+    assert [m["id"] for m in first] == [old_id]
+    assert "terbaru 60 mnt lalu" in info1
+    assert client.v11.cursors == [None]
+
+    # Polling 2: minta juga item yang lebih baru dengan cursor-top tadi.
+    second, info2 = run_async(fetch_notification_mentions(client, "lacakbuzzer"))
+    assert [m["id"] for m in second] == [old_id, new_id]
+    assert "lebih_baru=1, terbaru 0 mnt lalu" in info2
+    assert client.v11.cursors == [None, None, "TOP-1"]
+    assert client._lacak_top_cursor == "TOP-2"
+
+    selected = select_new_mentions(second, "lacakbuzzer", set(), now=now)
+    assert [m["id"] for m in selected] == [new_id]
+
+
+def test_find_top_cursor_missing_returns_none():
+    from bot.x_bot import find_top_cursor
+
+    assert find_top_cursor(legacy_response()) is None
+    assert find_top_cursor(legacy_response(top_cursor="ABC")) == "ABC"

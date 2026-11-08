@@ -366,28 +366,85 @@ def describe_notifications_response(response) -> str:
     )
 
 
+def find_top_cursor(response) -> str | None:
+    """Nilai `cursor-top` di respons timeline (penanda untuk meminta item yang lebih baru)."""
+
+    def _first_value(node):
+        if isinstance(node, dict):
+            if isinstance(node.get("value"), str):
+                return node["value"]
+            for v in node.values():
+                found = _first_value(v)
+                if found:
+                    return found
+        elif isinstance(node, list):
+            for v in node:
+                found = _first_value(v)
+                if found:
+                    return found
+        return None
+
+    for entry in _iter_entries(response):
+        if str(entry.get("entryId", "")).startswith("cursor-top"):
+            return _first_value(entry)
+    return None
+
+
+def _newest_age_text(mentions: list[dict], now: float | None = None) -> str:
+    times = [snowflake_to_unix(m["id"]) for m in mentions]
+    times = [t for t in times if t is not None]
+    if not times:
+        return ""
+    minutes = int(((time.time() if now is None else now) - max(times)) // 60)
+    return f", terbaru {minutes} mnt lalu"
+
+
 async def fetch_notification_mentions(
     twikit_client, bot_username: str, count: int = 20, verbose: bool = False
 ) -> tuple[list[dict], str]:
     """
     Kanal 1: notifikasi akun bot. Membaca tab Mentions; bila kosong, juga tab All
     (mention juga muncul di sana). Mengembalikan (mentions, info_untuk_log).
+
+    Selain permintaan biasa (tanpa cursor), bot juga meminta item yang lebih baru
+    dengan `cursor-top` dari polling sebelumnya, seperti klien web lama X saat
+    memperbarui notifikasi. Ini berjaga-jaga bila permintaan tanpa cursor
+    mengembalikan daftar lama yang tidak ikut terbarui.
     """
     found: list[dict] = []
     info: list[str] = []
-    endpoints = (
-        ("mentions", twikit_client.v11.notifications_mentions),
-        ("all", twikit_client.v11.notifications_all),
-    )
-    for name, endpoint in endpoints:
-        if name == "all" and found:
-            break
-        response, _ = await endpoint(count, None)
-        parsed = parse_legacy_notifications(response, bot_username, f"notif_{name}")
-        found.extend(parsed)
-        info.append(f"{name}.json={len(parsed)}")
+
+    response, _ = await twikit_client.v11.notifications_mentions(count, None)
+    parsed = parse_legacy_notifications(response, bot_username, "notif_mentions")
+    found.extend(parsed)
+    info.append(f"mentions.json={len(parsed)}{_newest_age_text(parsed)}")
+    if verbose:
+        info.append(f"[mentions.json mentah: {describe_notifications_response(response)}]")
+
+    top_cursor = getattr(twikit_client, "_lacak_top_cursor", None)
+    if top_cursor:
+        newer_response, _ = await twikit_client.v11.notifications_mentions(count, top_cursor)
+        newer = parse_legacy_notifications(newer_response, bot_username, "notif_mentions_baru")
+        found.extend(newer)
+        info.append(f"lebih_baru={len(newer)}{_newest_age_text(newer)}")
         if verbose:
-            info.append(f"[{name}.json mentah: {describe_notifications_response(response)}]")
+            info.append(f"[lebih_baru mentah: {describe_notifications_response(newer_response)}]")
+        next_cursor = find_top_cursor(newer_response) or top_cursor
+    else:
+        next_cursor = find_top_cursor(response)
+    try:
+        setattr(twikit_client, "_lacak_top_cursor", next_cursor)
+    except Exception:
+        pass
+
+    if not found:
+        all_response, _ = await twikit_client.v11.notifications_all(count, None)
+        parsed_all = parse_legacy_notifications(all_response, bot_username, "notif_all")
+        found.extend(parsed_all)
+        info.append(f"all.json={len(parsed_all)}{_newest_age_text(parsed_all)}")
+        if verbose:
+            info.append(f"[all.json mentah: {describe_notifications_response(all_response)}]")
+
     return found, " ".join(info)
 
 
