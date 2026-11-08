@@ -607,3 +607,29 @@ def test_collect_mentions_resets_twikit_transaction_on_error():
     assert ok_channels == 0
     assert status["notifikasi"].startswith("gagal (RuntimeError")
     assert twikit_client.client_transaction.home_page_response is None
+
+
+def test_select_new_mentions_counts_skip_reasons():
+    from collections import Counter
+
+    now = 1_790_000_000.0
+    handled_id = make_id(now - 30)
+    mentions = [
+        make_mention(make_id(now - 10)),
+        make_mention(make_id(now - 3 * 3600)),
+        make_mention(make_id(now - 2 * 3600)),
+        make_mention(handled_id),
+        make_mention(make_id(now - 5, 1), requester="LacakBuzzer"),
+        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer"),
+    ]
+    skipped = Counter()
+
+    selected = select_new_mentions(mentions, "LacakBuzzer", {handled_id}, now=now, max_age_seconds=1800, skipped=skipped)
+
+    assert len(selected) == 1
+    assert skipped == Counter({
+        "lebih tua dari 30 menit": 2,
+        "sudah diproses": 1,
+        "tweet bot sendiri": 1,
+        "balasan di thread bot": 1,
+    })
