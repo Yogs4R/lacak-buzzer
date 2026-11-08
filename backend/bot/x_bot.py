@@ -6,8 +6,10 @@ import argparse
 import asyncio
 import json
 import os
+import re
 import sys
 import time
+from collections import Counter
 
 from bot.mention_parser import parse_mention
 
@@ -276,20 +278,6 @@ class HandledMentions:
         self._save()
 
 
-def mention_from_twikit(tweet, from_user=None) -> dict:
-    """Ubah Tweet twikit (twifork) menjadi dict mention standar."""
-    user = from_user or getattr(tweet, "user", None)
-    legacy = getattr(tweet, "_legacy", None)
-    in_reply_to = legacy.get("in_reply_to_screen_name") if isinstance(legacy, dict) else None
-    return {
-        "id": str(getattr(tweet, "id", "") or ""),
-        "text": getattr(tweet, "full_text", "") or getattr(tweet, "text", "") or "",
-        "requester": (getattr(user, "screen_name", "") if user else "") or "",
-        "in_reply_to": in_reply_to or "",
-        "source": "twikit_notifications",
-    }
-
-
 def mention_from_twscrape(tweet) -> dict:
     """Ubah Tweet twscrape menjadi dict mention standar."""
     user = getattr(tweet, "user", None)
@@ -303,16 +291,113 @@ def mention_from_twscrape(tweet) -> dict:
     }
 
 
-async def fetch_notification_mentions(twikit_client, count: int = 20) -> list[dict]:
-    """Kanal 1: tab Mentions di notifikasi akun bot (via twikit/twifork)."""
-    notifs = await twikit_client.get_notifications("Mentions", count=count)
+def _tweet_mentions_bot(tweet_data: dict, bot: str) -> bool:
+    for m in (tweet_data.get("entities") or {}).get("user_mentions") or []:
+        if str(m.get("screen_name") or "").lower() == bot:
+            return True
+    text = tweet_data.get("full_text") or tweet_data.get("text") or ""
+    return re.search(rf"@{re.escape(bot)}(?![A-Za-z0-9_])", text, re.IGNORECASE) is not None
+
+
+def parse_legacy_notifications(response, bot_username: str, source: str) -> list[dict]:
+    """
+    Ambil mention dari respons mentah endpoint notifikasi lama
+    (/i/api/2/notifications/{mentions,all}.json).
+
+    Tidak bergantung pada susunan `entries`/`notifications` (yang berubah-ubah
+    dan membuat parser twifork bisa mengembalikan 0): cukup ambil semua tweet
+    di `globalObjects.tweets` yang menyebut akun bot.
+    """
+    bot = bot_username.strip().lstrip("@").lower()
+    global_objects = (response or {}).get("globalObjects") or {}
+    tweets = global_objects.get("tweets") or {}
+    users = global_objects.get("users") or {}
+
     mentions = []
-    for n in notifs:
-        tweet = getattr(n, "tweet", None)
-        if tweet is None:
+    for tweet_id, data in tweets.items():
+        if not isinstance(data, dict) or not _tweet_mentions_bot(data, bot):
             continue
-        mentions.append(mention_from_twikit(tweet, getattr(n, "from_user", None)))
+        user = users.get(str(data.get("user_id_str") or "")) or {}
+        mentions.append({
+            "id": str(data.get("id_str") or tweet_id),
+            "text": data.get("full_text") or data.get("text") or "",
+            "requester": user.get("screen_name") or "",
+            "in_reply_to": data.get("in_reply_to_screen_name") or "",
+            "source": source,
+        })
     return mentions
+
+
+def _iter_entries(node):
+    if isinstance(node, dict):
+        entries = node.get("entries")
+        if isinstance(entries, list):
+            for entry in entries:
+                if isinstance(entry, dict):
+                    yield entry
+        for value in node.values():
+            if isinstance(value, (dict, list)):
+                yield from _iter_entries(value)
+    elif isinstance(node, list):
+        for item in node:
+            yield from _iter_entries(item)
+
+
+def describe_notifications_response(response) -> str:
+    """Ringkasan bentuk respons mentah untuk log diagnostik (tanpa isi tweet)."""
+    if not isinstance(response, dict):
+        return f"respons bukan JSON object ({type(response).__name__})"
+    go = response.get("globalObjects") or {}
+    prefixes = Counter(
+        str(e.get("entryId", "")).rsplit("-", 1)[0] for e in _iter_entries(response)
+    )
+    return (
+        f"keys={sorted(response)} tweets={len(go.get('tweets') or {})} "
+        f"users={len(go.get('users') or {})} notifications={len(go.get('notifications') or {})} "
+        f"entries={dict(prefixes) or '{}'}"
+    )
+
+
+async def fetch_notification_mentions(
+    twikit_client, bot_username: str, count: int = 20, verbose: bool = False
+) -> tuple[list[dict], str]:
+    """
+    Kanal 1: notifikasi akun bot. Membaca tab Mentions; bila kosong, juga tab All
+    (mention juga muncul di sana). Mengembalikan (mentions, info_untuk_log).
+    """
+    found: list[dict] = []
+    info: list[str] = []
+    endpoints = (
+        ("mentions", twikit_client.v11.notifications_mentions),
+        ("all", twikit_client.v11.notifications_all),
+    )
+    for name, endpoint in endpoints:
+        if name == "all" and found:
+            break
+        response, _ = await endpoint(count, None)
+        parsed = parse_legacy_notifications(response, bot_username, f"notif_{name}")
+        found.extend(parsed)
+        info.append(f"{name}.json={len(parsed)}")
+        if verbose:
+            info.append(f"[{name}.json mentah: {describe_notifications_response(response)}]")
+    return found, " ".join(info)
+
+
+async def log_cookie_account(twikit_client, bot_username: str) -> None:
+    """Cetak akun pemilik cookie, untuk memastikan cookie memang milik akun bot."""
+    try:
+        response, _ = await twikit_client.v11.settings()
+        screen_name = str(response.get("screen_name") or "?")
+    except Exception as e:
+        print(f"⚠️ Tidak bisa mengecek pemilik cookie bot: {_short_error(e)}")
+        return
+    if screen_name.lower() == bot_username.strip().lstrip("@").lower():
+        print(f"✅ Cookie bot login sebagai @{screen_name}.")
+    else:
+        print(
+            f"❌ Cookie bot ternyata login sebagai @{screen_name}, BUKAN @{bot_username}. "
+            "Notifikasi yang dibaca adalah milik akun itu. Perbaiki auth_token/ct0 untuk akun bot."
+        )
 
 
 async def fetch_search_mentions(
@@ -381,7 +466,7 @@ def _short_error(exc: Exception) -> str:
     return text[:200]
 
 
-async def collect_mentions(twikit_client, scraper_api, bot_username: str):
+async def collect_mentions(twikit_client, scraper_api, bot_username: str, verbose: bool = False):
     """
     Ambil mention dari semua kanal aktif. Error satu kanal tidak
     menghentikan kanal lain. Mengembalikan (mentions, status_per_kanal, jumlah_kanal_ok).
@@ -392,9 +477,11 @@ async def collect_mentions(twikit_client, scraper_api, bot_username: str):
 
     if twikit_client is not None:
         try:
-            found = await fetch_notification_mentions(twikit_client)
+            found, info = await fetch_notification_mentions(
+                twikit_client, bot_username, verbose=verbose
+            )
             mentions.extend(found)
-            status["notifikasi"] = f"{len(found)} tweet"
+            status["notifikasi"] = f"{len(found)} tweet ({info})"
             ok_channels += 1
         except Exception as e:
             status["notifikasi"] = f"gagal ({_short_error(e)})"
@@ -534,8 +621,12 @@ def build_arg_parser() -> argparse.ArgumentParser:
 async def check_channels(bot_username: str) -> int:
     """Diagnostik: tampilkan apa yang dilihat tiap kanal, tanpa memanggil backend atau memposting."""
     twikit_client = build_twikit_client(bot_username)
+    if twikit_client is not None:
+        await log_cookie_account(twikit_client, bot_username)
     scraper_api = await build_scraper_api()
-    mentions, status, _ = await collect_mentions(twikit_client, scraper_api, bot_username)
+    mentions, status, _ = await collect_mentions(
+        twikit_client, scraper_api, bot_username, verbose=True
+    )
 
     print("\nStatus kanal:")
     for channel, info in status.items():
@@ -612,8 +703,14 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
         print(f"⚠️ Kanal search dimatikan: {_short_error(e)}")
         scraper_api = None
     twikit_client = build_twikit_client(bot_username)
+    if twikit_client is not None:
+        await log_cookie_account(twikit_client, bot_username)
 
     handled = HandledMentions()
+    poll_count = 0
+    # Ringkasan respons mentah dicetak di polling pertama lalu tiap 30 polling,
+    # agar penyebab "0 tweet" terlihat di log Space.
+    VERBOSE_EVERY = 30
 
     # Exponential backoff bila SEMUA kanal gagal berturut-turut
     MAX_BACKOFF_MULTIPLIER = 8
@@ -623,8 +720,10 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
         try:
             print(f"\n[{time.strftime('%H:%M:%S')}] Memeriksa mention baru...")
 
+            verbose = poll_count % VERBOSE_EVERY == 0
+            poll_count += 1
             mentions, status, ok_channels = await collect_mentions(
-                twikit_client, scraper_api, bot_username
+                twikit_client, scraper_api, bot_username, verbose=verbose
             )
             for channel, info in status.items():
                 print(f"   [{channel}] {info}")
