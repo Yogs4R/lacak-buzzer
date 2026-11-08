@@ -281,7 +281,9 @@ class HandledMentions:
 def mention_from_twscrape(tweet) -> dict:
     """Ubah Tweet twscrape menjadi dict mention standar."""
     user = getattr(tweet, "user", None)
-    reply_user = getattr(tweet, "inReplyToUser", None)
+    # Tweet yang sekadar DIAWALI @username juga punya inReplyToUser; hanya
+    # anggap balasan bila benar-benar membalas sebuah tweet.
+    reply_user = getattr(tweet, "inReplyToUser", None) if getattr(tweet, "inReplyToTweetId", None) else None
     return {
         "id": str(getattr(tweet, "id", "") or ""),
         "text": getattr(tweet, "rawContent", "") or getattr(tweet, "text", "") or "",
@@ -322,7 +324,13 @@ def parse_legacy_notifications(response, bot_username: str, source: str) -> list
             "id": str(data.get("id_str") or tweet_id),
             "text": data.get("full_text") or data.get("text") or "",
             "requester": user.get("screen_name") or "",
-            "in_reply_to": data.get("in_reply_to_screen_name") or "",
+            # X mengisi in_reply_to_screen_name juga untuk tweet biasa yang
+            # diawali "@akun". Balasan sungguhan selalu punya in_reply_to_status_id_str.
+            "in_reply_to": (
+                data.get("in_reply_to_screen_name") or ""
+                if data.get("in_reply_to_status_id_str")
+                else ""
+            ),
             "source": source,
         })
     return mentions
