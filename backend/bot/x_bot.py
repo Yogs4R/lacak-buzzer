@@ -426,9 +426,11 @@ def select_new_mentions(
     handled,
     now: float | None = None,
     max_age_seconds: float = DEFAULT_MAX_MENTION_AGE_SECONDS,
+    skipped: Counter | None = None,
 ) -> list[dict]:
     """
     Saring mention yang perlu diproses, urut dari yang paling lama.
+    Bila `skipped` (Counter) diberikan, alasan setiap mention yang diabaikan dihitung di sana.
 
     Diabaikan: ID ganda, ID yang sudah ditangani, tweet bot sendiri,
     balasan ke tweet bot (agar komentar di thread balasan bot tidak memicu
@@ -438,22 +440,30 @@ def select_new_mentions(
     bot = bot_username.strip().lstrip("@").lower()
     seen = set()
     selected = []
+    skipped = Counter() if skipped is None else skipped
 
     for m in mentions:
         m_id = str(m.get("id") or "")
         if not m_id.isdigit() or not m.get("text"):
+            skipped["data tidak lengkap"] += 1
             continue
-        if m_id in seen or m_id in handled:
+        if m_id in seen:
             continue
         seen.add(m_id)
+        if m_id in handled:
+            skipped["sudah diproses"] += 1
+            continue
 
         if (m.get("requester") or "").lower() == bot:
+            skipped["tweet bot sendiri"] += 1
             continue
         if (m.get("in_reply_to") or "").lower() == bot:
+            skipped["balasan di thread bot"] += 1
             continue
 
         created = snowflake_to_unix(m_id)
         if created is not None and now - created > max_age_seconds:
+            skipped[f"lebih tua dari {int(max_age_seconds // 60)} menit"] += 1
             continue
 
         selected.append(m)
@@ -642,8 +652,11 @@ async def check_channels(bot_username: str) -> int:
         print(f"   [{m['source']}] id={m['id']} @{m['requester']} ({age}) target={target or '-'}")
         print(f"      {text}")
 
-    fresh = select_new_mentions(mentions, bot_username, handled=HandledMentions())
+    skipped = Counter()
+    fresh = select_new_mentions(mentions, bot_username, handled=HandledMentions(), skipped=skipped)
     print(f"\n{len(fresh)} mention akan diproses bila bot berjalan sekarang.")
+    for reason, n in sorted(skipped.items()):
+        print(f"   diabaikan ({reason}): {n}")
     return 0
 
 
@@ -708,6 +721,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
 
     handled = HandledMentions()
     poll_count = 0
+    last_skip_summary = None
     # Ringkasan respons mentah dicetak di polling pertama lalu tiap 30 polling,
     # agar penyebab "0 tweet" terlihat di log Space.
     VERBOSE_EVERY = 30
@@ -728,10 +742,16 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
             for channel, info in status.items():
                 print(f"   [{channel}] {info}")
 
+            skipped = Counter()
             new_mentions = select_new_mentions(
-                mentions, bot_username, handled, max_age_seconds=max_age
+                mentions, bot_username, handled, max_age_seconds=max_age, skipped=skipped
             )
             print(f"   Ditemukan {len(new_mentions)} mention baru untuk @{bot_username}.")
+            # Alasan mention diabaikan, dicetak hanya saat berubah agar log tidak penuh.
+            skip_summary = ", ".join(f"{reason}: {n}" for reason, n in sorted(skipped.items()))
+            if skip_summary and (verbose or skip_summary != last_skip_summary):
+                print(f"   Diabaikan -> {skip_summary}")
+            last_skip_summary = skip_summary
 
             for m in new_mentions:
                 mention_id = m["id"]
