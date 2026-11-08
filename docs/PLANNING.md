@@ -53,7 +53,7 @@ Saat ini integrasi bot otomatis untuk Twitter/X (`@lacakbuzzer`) masih berada da
 * **Tidak membalas ulang mention lama setelah restart.** ID mention yang sudah ditangani disimpan di `backend/data/x_bot_state.json`, dan mention yang lebih tua dari 30 menit diabaikan (atur dengan `X_BOT_MAX_MENTION_AGE`, dalam detik). Penanda `last_seen_id` dihapus karena bisa membuang mention dari kanal search yang terindeks lebih lambat dari kanal notifikasi.
 * **Pesan internal tidak diposting.** Error backend `Duplicate mention` sebelumnya ikut diposting sebagai balasan publik; sekarang diabaikan.
 * **Timeout panggilan analisis dinaikkan dari 30 menjadi 120 detik.** Scraping sendiri boleh memakan waktu sampai 40 detik, jadi timeout lama sering membuat bot membalas "Maaf, analisis belum bisa diproses" padahal backend berhasil.
-* **Balasan ke tweet bot sendiri diabaikan**, agar komentar orang lain di thread balasan bot tidak memicu analisis ulang terhadap akun yang disebut di thread tersebut.
+* **Bot hanya merespons bila `@lacakbuzzer` benar-benar diketik.** Saat membalas di thread, X otomatis menaruh `@akun @akun ...` di depan teks (tidak terlihat di aplikasi). Bot membaca bagian yang diketik saja (`display_text_range`), jadi balasan seperti "Halo" di thread tidak memicu analisis. Target diambil dari teks yang diketik; bila tidak ada, dari akun yang dibalas (mis. membalas tweet `@akun` dengan `@lacakbuzzer cek ini`).
 * **Mode diagnostik:** jalankan dari folder `backend/` untuk melihat apa yang ditangkap tiap kanal tanpa memanggil analisis dan tanpa memposting:
   ```bash
   python -m bot.x_bot --bot-username lacakbuzzer --check

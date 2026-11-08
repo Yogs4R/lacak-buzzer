@@ -278,15 +278,61 @@ class HandledMentions:
         self._save()
 
 
+_LEADING_MENTIONS = re.compile(r"^(?:\s*@[A-Za-z0-9_]+)+\s*")
+
+
+def typed_text(full_text: str, display_text_range=None, is_reply: bool = False) -> str:
+    """
+    Bagian teks yang benar-benar diketik penulis.
+
+    Saat membalas, X otomatis menaruh "@akun @akun ..." di depan teks. Prefix itu
+    tidak terlihat di aplikasi, tetapi ada di full_text. `display_text_range[0]`
+    menunjuk awal teks yang terlihat. Bila tidak tersedia, prefix @ di awal
+    balasan dibuang.
+    """
+    full_text = full_text or ""
+    if isinstance(display_text_range, (list, tuple)) and display_text_range:
+        try:
+            start = int(display_text_range[0])
+        except (TypeError, ValueError):
+            start = 0
+        if 0 <= start <= len(full_text):
+            return full_text[start:]
+    if is_reply:
+        return _LEADING_MENTIONS.sub("", full_text, count=1)
+    return full_text
+
+
+def mentions_bot_explicitly(mention: dict, bot_username: str) -> bool:
+    """True bila @bot ada di teks yang diketik (bukan hanya di prefix balasan otomatis)."""
+    bot = bot_username.strip().lstrip("@")
+    text = mention.get("typed_text", mention.get("text") or "")
+    return re.search(rf"@{re.escape(bot)}(?![A-Za-z0-9_])", text, re.IGNORECASE) is not None
+
+
+def request_text(mention: dict) -> str:
+    """
+    Teks yang dipakai untuk mencari target analisis: teks yang diketik, lalu akun
+    yang dibalas sebagai cadangan (mis. membalas tweet @akun dengan
+    "@lacakbuzzer cek ini" -> target @akun).
+    """
+    text = mention.get("typed_text", mention.get("text") or "")
+    reply_to = mention.get("in_reply_to") or ""
+    return f"{text} @{reply_to}" if reply_to else text
+
+
 def mention_from_twscrape(tweet) -> dict:
     """Ubah Tweet twscrape menjadi dict mention standar."""
     user = getattr(tweet, "user", None)
     # Tweet yang sekadar DIAWALI @username juga punya inReplyToUser; hanya
     # anggap balasan bila benar-benar membalas sebuah tweet.
-    reply_user = getattr(tweet, "inReplyToUser", None) if getattr(tweet, "inReplyToTweetId", None) else None
+    is_reply = bool(getattr(tweet, "inReplyToTweetId", None))
+    reply_user = getattr(tweet, "inReplyToUser", None) if is_reply else None
+    text = getattr(tweet, "rawContent", "") or getattr(tweet, "text", "") or ""
     return {
         "id": str(getattr(tweet, "id", "") or ""),
-        "text": getattr(tweet, "rawContent", "") or getattr(tweet, "text", "") or "",
+        "text": text,
+        "typed_text": typed_text(text, getattr(tweet, "displayTextRange", None), is_reply),
         "requester": (getattr(user, "username", "") if user else "") or "",
         "in_reply_to": (getattr(reply_user, "username", "") if reply_user else "") or "",
         "source": "twscrape_search",
@@ -320,9 +366,15 @@ def parse_legacy_notifications(response, bot_username: str, source: str) -> list
         if not isinstance(data, dict) or not _tweet_mentions_bot(data, bot):
             continue
         user = users.get(str(data.get("user_id_str") or "")) or {}
+        text = data.get("full_text") or data.get("text") or ""
         mentions.append({
             "id": str(data.get("id_str") or tweet_id),
-            "text": data.get("full_text") or data.get("text") or "",
+            "text": text,
+            "typed_text": typed_text(
+                text,
+                data.get("display_text_range"),
+                bool(data.get("in_reply_to_status_id_str")),
+            ),
             "requester": user.get("screen_name") or "",
             # X mengisi in_reply_to_screen_name juga untuk tweet biasa yang
             # diawali "@akun". Balasan sungguhan selalu punya in_reply_to_status_id_str.
@@ -497,9 +549,9 @@ def select_new_mentions(
     Saring mention yang perlu diproses, urut dari yang paling lama.
     Bila `skipped` (Counter) diberikan, alasan setiap mention yang diabaikan dihitung di sana.
 
-    Diabaikan: ID ganda, ID yang sudah ditangani, tweet bot sendiri,
-    balasan ke tweet bot (agar komentar di thread balasan bot tidak memicu
-    analisis baru), dan mention yang lebih tua dari max_age_seconds.
+    Diabaikan: ID ganda, ID yang sudah ditangani, tweet bot sendiri, tweet yang
+    tidak mengetik @bot sendiri (mis. "Halo" di thread, yang hanya membawa
+    prefix @ otomatis dari X), dan mention yang lebih tua dari max_age_seconds.
     """
     now = time.time() if now is None else now
     bot = bot_username.strip().lstrip("@").lower()
@@ -522,8 +574,8 @@ def select_new_mentions(
         if (m.get("requester") or "").lower() == bot:
             skipped["tweet bot sendiri"] += 1
             continue
-        if (m.get("in_reply_to") or "").lower() == bot:
-            skipped["balasan di thread bot"] += 1
+        if not mentions_bot_explicitly(m, bot):
+            skipped["@bot tidak diketik (hanya prefix balasan)"] += 1
             continue
 
         created = snowflake_to_unix(m_id)
@@ -712,8 +764,12 @@ async def check_channels(bot_username: str) -> int:
     for m in sorted(mentions, key=lambda m: int(m["id"]) if m["id"].isdigit() else 0):
         created = snowflake_to_unix(m["id"])
         age = f"{int((now - created) / 60)} mnt lalu" if created else "?"
-        target = parse_mention(m["text"], bot_username, requester_username=m["requester"])
-        text = " ".join(m["text"].split())[:100]
+        target = (
+            parse_mention(request_text(m), bot_username, requester_username=m["requester"])
+            if mentions_bot_explicitly(m, bot_username)
+            else None
+        )
+        text = " ".join(m.get("typed_text", m["text"]).split())[:100]
         print(f"   [{m['source']}] id={m['id']} @{m['requester']} ({age}) target={target or '-'}")
         print(f"      {text}")
 
@@ -820,7 +876,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
 
             for m in new_mentions:
                 mention_id = m["id"]
-                text = m["text"]
+                text = request_text(m)
                 requester = m["requester"]
 
                 # Tandai lebih dulu: crash atau gagal posting tidak boleh
@@ -838,7 +894,7 @@ async def start_bot(base_url: str, bot_username: str, poll_interval: int = 60):
                     continue
 
                 print(f"Memproses mention dari @{requester} (ID: {mention_id}, kanal: {m['source']})")
-                print(f"   Isi tweet: \"{text}\"")
+                print(f"   Isi tweet: \"{m.get('typed_text', text)}\"")
                 print(f"   Draft Balasan:\n{reply_text}")
 
                 if twikit_client is None:

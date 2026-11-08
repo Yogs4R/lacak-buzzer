@@ -315,8 +315,11 @@ def make_id(unix_seconds: float, seq: int = 0) -> str:
     return str(((int(unix_seconds * 1000) - _EPOCH_MS) << 22) + seq)
 
 
-def make_mention(m_id, text="@LacakBuzzer cek @detikcom", requester="dandy63609", in_reply_to=""):
-    return {"id": m_id, "text": text, "requester": requester, "in_reply_to": in_reply_to, "source": "test"}
+def make_mention(m_id, text="@LacakBuzzer cek @detikcom", requester="dandy63609", in_reply_to="", typed=None):
+    m = {"id": m_id, "text": text, "requester": requester, "in_reply_to": in_reply_to, "source": "test"}
+    if typed is not None:
+        m["typed_text"] = typed
+    return m
 
 
 def test_snowflake_roundtrip():
@@ -374,7 +377,7 @@ def test_select_new_mentions_filters_and_sorts():
         make_mention(stale),  # terlalu lama (mis. setelah restart)
         make_mention(handled_id),
         make_mention(make_id(now - 5, 1), requester="LacakBuzzer"),  # tweet bot sendiri
-        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer"),  # balasan di thread bot
+        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer", typed="Halo"),  # balasan tanpa @bot diketik
         make_mention("abc"),
         make_mention(make_id(now - 5, 3), text=""),
     ]
@@ -420,8 +423,8 @@ def legacy_response(tweets=(), users=(), notifications=None, top_cursor=None):
     return {"globalObjects": go, "timeline": {"instructions": [{"addEntries": {"entries": entries}}]}}
 
 
-def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=(), reply_to_status=None):
-    return {
+def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=(), reply_to_status=None, display_start=None):
+    data = {
         "id_str": t_id,
         "full_text": text,
         "user_id_str": user_id,
@@ -429,6 +432,9 @@ def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=(), reply_to_statu
         "in_reply_to_status_id_str": reply_to_status,
         "entities": {"user_mentions": [{"screen_name": m} for m in mentions]},
     }
+    if display_start is not None:
+        data["display_text_range"] = [display_start, len(text)]
+    return data
 
 
 class FakeV11:
@@ -499,7 +505,7 @@ def twscrape_tweet(m_id, text, username, reply_to=None, reply_to_status=None):
 def test_fetch_notification_mentions_reads_raw_mentions_response():
     response = legacy_response(
         tweets=[
-            legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9", reply_to="LacakBuzzer", mentions=["LacakBuzzer", "detikcom"], reply_to_status="100"),
+            legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9", reply_to="LacakBuzzer", mentions=["LacakBuzzer", "detikcom"], reply_to_status="100", display_start=0),
             legacy_tweet("110", "tweet konteks tanpa mention bot", "9"),
         ],
         users=USERS,
@@ -512,6 +518,7 @@ def test_fetch_notification_mentions_reads_raw_mentions_response():
         {
             "id": "111",
             "text": "@LacakBuzzer cek @detikcom",
+            "typed_text": "@LacakBuzzer cek @detikcom",
             "requester": "dandy63609",
             "in_reply_to": "LacakBuzzer",
             "source": "notif_mentions",
@@ -629,7 +636,7 @@ def test_select_new_mentions_counts_skip_reasons():
         make_mention(make_id(now - 2 * 3600)),
         make_mention(handled_id),
         make_mention(make_id(now - 5, 1), requester="LacakBuzzer"),
-        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer"),
+        make_mention(make_id(now - 5, 2), in_reply_to="lacakbuzzer", typed="Halo"),
     ]
     skipped = Counter()
 
@@ -640,7 +647,7 @@ def test_select_new_mentions_counts_skip_reasons():
         "lebih tua dari 30 menit": 2,
         "sudah diproses": 1,
         "tweet bot sendiri": 1,
-        "balasan di thread bot": 1,
+        "@bot tidak diketik (hanya prefix balasan)": 1,
     })
 
 
@@ -712,3 +719,79 @@ def test_find_top_cursor_missing_returns_none():
 
     assert find_top_cursor(legacy_response()) is None
     assert find_top_cursor(legacy_response(top_cursor="ABC")) == "ABC"
+
+
+# ---------------------------------------------------------------------------
+# Bot hanya merespons bila @bot benar-benar diketik
+# ---------------------------------------------------------------------------
+
+from bot.mention_parser import parse_mention as _parse_mention
+from bot.x_bot import request_text, typed_text
+
+
+def _thread_reply(t_id, full, typed_from, reply_to, requester_id="9"):
+    return legacy_tweet(t_id, full, requester_id, reply_to=reply_to, reply_to_status="1", display_start=typed_from)
+
+
+def _select_and_target(tweets):
+    now = _time.time()
+    response = legacy_response(tweets=tweets, users=USERS + [{"id_str": "7", "screen_name": "qterwi"}])
+    mentions, _ = run_async(fetch_notification_mentions(FakeTwikitClient(mentions_response=response), "lacakbuzzer"))
+    skipped = __import__("collections").Counter()
+    selected = select_new_mentions(mentions, "lacakbuzzer", set(), now=now, skipped=skipped)
+    targets = [_parse_mention(request_text(m), "lacakbuzzer", requester_username=m["requester"]) for m in selected]
+    return selected, targets, skipped
+
+
+def test_thread_reply_without_typed_bot_mention_is_ignored():
+    # Kasus nyata: membalas "Halo" di thread; X menaruh "@lacakbuzzer @elonmusk " di depan.
+    full = "@lacakbuzzer @elonmusk Halo"
+    tweet = _thread_reply(make_id(_time.time() - 20), full, full.index("Halo"), "qterwi", requester_id="7")
+
+    selected, _, skipped = _select_and_target([tweet])
+
+    assert selected == []
+    assert skipped == __import__("collections").Counter({"@bot tidak diketik (hanya prefix balasan)": 1})
+
+
+def test_thread_reply_with_typed_request_uses_typed_target():
+    full = "@lacakbuzzer @elonmusk @lacakbuzzer cek @detikcom"
+    tweet = _thread_reply(make_id(_time.time() - 20), full, len("@lacakbuzzer @elonmusk "), "lacakbuzzer", requester_id="7")
+
+    selected, targets, _ = _select_and_target([tweet])
+
+    assert len(selected) == 1
+    assert targets == ["detikcom"]  # bukan elonmusk dari prefix otomatis
+
+
+def test_reply_to_suspect_with_typed_bot_mention_targets_replied_account():
+    full = "@detikcom @lacakbuzzer cek akun ini"
+    tweet = _thread_reply(make_id(_time.time() - 20), full, len("@detikcom "), "detikcom", requester_id="7")
+
+    selected, targets, _ = _select_and_target([tweet])
+
+    assert targets == ["detikcom"]
+
+
+def test_reply_to_own_tweet_without_target_gets_no_analysis():
+    full = "@lacakbuzzer @elonmusk @lacakbuzzer makasih"
+    tweet = _thread_reply(make_id(_time.time() - 20), full, len("@lacakbuzzer @elonmusk "), "qterwi", requester_id="7")
+
+    _, targets, _ = _select_and_target([tweet])
+
+    assert targets == [None]
+
+
+def test_typed_text_falls_back_to_stripping_reply_prefix():
+    assert typed_text("@lacakbuzzer @elonmusk Halo", None, is_reply=True) == "Halo"
+    assert typed_text("@lacakbuzzer cek @detikcom", None, is_reply=False) == "@lacakbuzzer cek @detikcom"
+    assert typed_text("@a @b teks", [6, 10], is_reply=True) == "teks"
+
+
+def test_twscrape_uses_display_text_range():
+    from bot.x_bot import mention_from_twscrape
+
+    tweet = twscrape_tweet("6", "@lacakbuzzer @elonmusk Halo", "qterwi", reply_to="qterwi", reply_to_status=4)
+    tweet.displayTextRange = [23, 27]
+
+    assert mention_from_twscrape(tweet)["typed_text"] == "Halo"
