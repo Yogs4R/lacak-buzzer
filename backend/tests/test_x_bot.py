@@ -418,12 +418,13 @@ def legacy_response(tweets=(), users=(), notifications=None):
     return {"globalObjects": go, "timeline": {"instructions": [{"addEntries": {"entries": entries}}]}}
 
 
-def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=()):
+def legacy_tweet(t_id, text, user_id, reply_to=None, mentions=(), reply_to_status=None):
     return {
         "id_str": t_id,
         "full_text": text,
         "user_id_str": user_id,
         "in_reply_to_screen_name": reply_to,
+        "in_reply_to_status_id_str": reply_to_status,
         "entities": {"user_mentions": [{"screen_name": m} for m in mentions]},
     }
 
@@ -478,19 +479,20 @@ class FakeScraperApi:
             yield t
 
 
-def twscrape_tweet(m_id, text, username, reply_to=None):
+def twscrape_tweet(m_id, text, username, reply_to=None, reply_to_status=None):
     return SimpleNamespace(
         id=int(m_id),
         rawContent=text,
         user=SimpleNamespace(username=username),
         inReplyToUser=SimpleNamespace(username=reply_to) if reply_to else None,
+        inReplyToTweetId=reply_to_status,
     )
 
 
 def test_fetch_notification_mentions_reads_raw_mentions_response():
     response = legacy_response(
         tweets=[
-            legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9", reply_to="LacakBuzzer", mentions=["LacakBuzzer", "detikcom"]),
+            legacy_tweet("111", "@LacakBuzzer cek @detikcom", "9", reply_to="LacakBuzzer", mentions=["LacakBuzzer", "detikcom"], reply_to_status="100"),
             legacy_tweet("110", "tweet konteks tanpa mention bot", "9"),
         ],
         users=USERS,
@@ -633,3 +635,33 @@ def test_select_new_mentions_counts_skip_reasons():
         "tweet bot sendiri": 1,
         "balasan di thread bot": 1,
     })
+
+
+def test_tweet_starting_with_bot_mention_is_not_treated_as_thread_reply():
+    # Bentuk asli dari X: tweet biasa "@lacakbuzzer cek ..." punya
+    # in_reply_to_screen_name = lacakbuzzer tetapi tanpa in_reply_to_status_id_str.
+    now = _time.time()
+    standalone_id = make_id(now - 60)
+    real_reply_id = make_id(now - 30)
+    response = legacy_response(
+        tweets=[
+            legacy_tweet(standalone_id, "@lacakbuzzer analisis akun ini @detikcom", "9", reply_to="lacakbuzzer"),
+            legacy_tweet(real_reply_id, "@lacakbuzzer @detikcom mantap", "9", reply_to="lacakbuzzer", reply_to_status="123"),
+        ],
+        users=USERS,
+    )
+    mentions, _ = run_async(fetch_notification_mentions(FakeTwikitClient(mentions_response=response), "lacakbuzzer"))
+
+    selected = select_new_mentions(mentions, "lacakbuzzer", set(), now=now)
+
+    assert [m["id"] for m in selected] == [standalone_id]
+
+
+def test_twscrape_standalone_mention_is_not_treated_as_thread_reply():
+    from bot.x_bot import mention_from_twscrape
+
+    standalone = mention_from_twscrape(twscrape_tweet("5", "@lacakbuzzer cek @detikcom", "qterwi", reply_to="lacakbuzzer"))
+    real_reply = mention_from_twscrape(twscrape_tweet("6", "@lacakbuzzer ok", "qterwi", reply_to="lacakbuzzer", reply_to_status=4))
+
+    assert standalone["in_reply_to"] == ""
+    assert real_reply["in_reply_to"] == "lacakbuzzer"
